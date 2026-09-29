@@ -2,7 +2,7 @@
 #
 #  File:      deploy-site.sh
 #  Created:   2026-06-20
-#  Updated:   2026-07-07
+#  Updated:   2026-09-30
 #  Developer: Kennt Kim / Calida Lab
 #  Overview:  Builds the Astro landing page (site/) and deploys the static output to the
 #             calidalab.ai origin server (nginx, Cloudflare-proxied). One command to ship a
@@ -26,7 +26,18 @@ REMOTE_DIR="/var/www/siliconscope"
 URL="https://siliconscope.calidalab.ai"
 
 echo "▸ Building site…"
-( cd site && npm run build )
+# Astro 7 needs Node >= 22.12 (site/package.json "engines"). The login shell's nvm default can be
+# older, and an old Node fails deep inside the build, so select the version site/.nvmrc names
+# first (nvm installs it on first use), and refuse to build on anything older.
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  set +u; . "$HOME/.nvm/nvm.sh"; ( cd site && nvm install >/dev/null ) && nvm use "$(cat site/.nvmrc)" >/dev/null; set -u
+fi
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo "✗ Node $(node --version) is too old for the site (needs >= 22.12)." >&2
+  exit 1
+fi
+( cd site && npm ci --silent && npm run build )
 
 echo "▸ Uploading to ${HOST}:${REMOTE_DIR} …"
 # Capture the itemized list of transferred files so the purge step can invalidate exactly
