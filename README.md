@@ -66,8 +66,13 @@ amber), the droplet **8 containers**. This Mac is always the first tile.*
   **ANE**, Media, memory bandwidth, power, fans. As far as I know, no other tool shows a
   **remote Mac's Neural Engine**.
 - **A Linux/NVIDIA box gets a GPU-centric view** — utilization, VRAM, power against the card's
-  limit, temperature, which processes hold VRAM, and any **Ollama** models loaded. It doesn't
-  pretend a 3090 has E-cores.
+  limit, temperature, and the questions asked of Apple Silicon: is it **bandwidth-bound**, how
+  close are the clocks to their maximum, and **what is holding them back** (power cap, thermal
+  slowdown). Then what runs on it: which processes hold VRAM, named by script and container, the
+  **Ollama** models, a **ComfyUI** queue, and the **containers** with their restart counts. It
+  doesn't pretend a 3090 has E-cores.
+- **A server without a GPU** — a cloud droplet running Docker — shows its containers, CPU,
+  memory and disks, and can be read without handing the agent root.
 
 ![A remote Mac in the full local dashboard, ANE included](docs/img/fleet-remote-mac.png)
 

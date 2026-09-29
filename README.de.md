@@ -70,8 +70,14 @@ gestartet** (orange), auf dem Droplet **8 Container**. Dieser Mac ist immer die 
   **ANE**, Media, Speicherbandbreite, Leistungsaufnahme, Lüfter. Meines Wissens zeigt kein anderes
   Tool die **Neural Engine eines entfernten Macs** an.
 - **Ein Linux-Rechner mit NVIDIA-Karte bekommt eine auf die GPU zugeschnittene Ansicht**: Auslastung,
-  VRAM, Leistungsaufnahme im Verhältnis zum Limit der Karte, Temperatur, welche Prozesse VRAM belegen,
-  und geladene **Ollama**-Modelle. E-Kerne dichtet sie einer 3090 nicht an.
+  VRAM, Leistungsaufnahme im Verhältnis zum Limit der Karte, Temperatur – und die Fragen, die man
+  Apple Silicon stellt: Ist sie **durch die Bandbreite begrenzt**, wie nah liegen die Takte am
+  Maximum, und **was bremst sie** (Power-Limit, thermische Drosselung)? Dazu, was darauf läuft:
+  welche Prozesse VRAM belegen, mit Skript- und Containernamen, die **Ollama**-Modelle, eine
+  **ComfyUI**-Warteschlange und die **Container** mit ihrer Zahl an Neustarts. E-Kerne dichtet sie
+  einer 3090 nicht an.
+- **Ein Server ohne GPU** – etwa ein Cloud-Droplet mit Docker – zeigt Container, CPU, Speicher und
+  Platten, und das, ohne dem Agent root-Rechte zu geben.
 
 ![Ein ferner Mac im vollen lokalen Dashboard, ANE inklusive](docs/img/fleet-remote-mac.png)
 
