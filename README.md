@@ -93,49 +93,19 @@ sidebar added. Collapse it and you're back to 3.x exactly.*
 
 #### Install an agent
 
-One URL, every platform — systemd on Linux, a LaunchAgent on macOS:
+One command, the same on Linux and macOS:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh
 ```
 
-The Mac agent needs **no sudo**, so this finishes unattended over `ssh`. Each installer ends by
-printing one `sscope://pair…` link — paste it into **Add machine…** in the app and the machine is
-added *and* paired in a single step.
+It ends by printing one `sscope://pair…` link — paste it into **Add machine…** in the app and the
+machine is added *and* paired in a single step. On a Mac you sit at, you don't need the agent at
+all: **Settings → Share this Mac to Fleet**.
 
-On a Mac you actually sit at, you don't need the agent at all: **Settings → Share this Mac**.
-
-**On an Intel Mac** the agent reports CPU and memory — what that machine actually has. The
-chip-level metrics are absent because the hardware is: no Neural Engine, no Media Engine, and no
-unified-memory bandwidth or per-domain power, which come from an interface only Apple Silicon
-publishes. The app itself remains Apple Silicon only.
-
-**On a Windows machine** the agent reports CPU and memory, and an NVIDIA card through the same
-`nvidia-smi` path Linux uses — utilisation, VRAM, temperature, power and per-process VRAM. Windows
-has no load average, so that field carries nothing rather than an invented number, and drive
-capacity is not collected there yet. The machine joins the fleet the way a Linux GPU box does.
-There is no one-line installer for it yet: build the agent with `GOOS=windows go build ./agent`
-and run it as a scheduled task.
-
-> **Headless Mac?** Enable **System Settings → General → Sharing → Remote Login** first — you can't
-> install anything on it otherwise. **Off your LAN** (Tailscale, VPN, cloud)? mDNS can't reach it, so
-> add it by address in **Add machine…**; prefer Tailscale or an SSH tunnel over exposing the port
-> publicly.
-
-> **Lockdown Mode, or a firewall set to block all incoming connections,** keeps the viewer from reaching
-> the agent: the Mac never shows up, or shows a red dot with a TLS or hostname error. On that Mac, open
-> **System Settings → Network → Firewall → Options**, turn off **Block all incoming connections**, check
-> that SiliconScope (or `sscope-agent-mac`) is allowed, then restart SiliconScope. Worked out by
-> [@progenitor-amborella](https://github.com/progenitor-amborella) in [#63](https://github.com/kennss/SiliconScope/issues/63).
-
-**To remove an agent** — run the same installer with `--uninstall` on that machine:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh -s -- --uninstall
-```
-
-It stops the service and deletes the binary, token, certificate and keychain. Then, on the viewer
-Mac, right-click the machine in the Fleet sidebar → **Forget pairing**.
+**📖 [Fleet manual](docs/fleet.md)** — headless Macs, Linux GPU boxes, a cloud server over
+Tailscale without handing the agent root, Intel Macs, Windows, changing a token, removing an agent,
+and what to do when a machine doesn't connect.
 
 ## New in 3.0
 

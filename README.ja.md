@@ -71,31 +71,15 @@
 
 #### エージェントのインストール
 
-どのプラットフォームでも同じ URL を使います。Linux では systemd、macOS では LaunchAgent として登録されます。
+Linux でも macOS でも同じコマンド 1 行です。
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh
 ```
 
-Mac のエージェントは **sudo が要らない**ので、`ssh` 経由でも途中で止まらずに最後まで完了します。どのインストーラも最後に `sscope://pair…` のリンクを 1 行出力します。これをアプリの **Add machine…** に貼り付ければ、追加とペアリングが一度で済みます。
+最後に `sscope://pair…` のリンクが 1 行表示されます。アプリの **Add machine…** に貼り付ければ、マシンの追加とペアリングが一度に済みます。自分が使っている Mac ならエージェントは不要です。**Settings → Share this Mac to Fleet** をオンにしてください。
 
-目の前で使っている Mac なら、エージェントも要りません。**設定 → Share this Mac** で共有できます。
-
-**Intel Mac では**、エージェントが報告するのは CPU とメモリです。そのマシンにあるのはそれだけだからです。チップレベルの指標がないのは、該当するハードウェアがないためです。Neural Engine も Media Engine もなく、ユニファイドメモリの帯域幅やドメイン別の電力も、Apple Silicon だけが公開しているインターフェースから取得しています。アプリ本体は引き続き Apple Silicon 専用です。
-
-**Windows マシンでは**、エージェントは CPU とメモリを報告し、NVIDIA のカードについては Linux と同じ `nvidia-smi` 経由で使用率、VRAM、温度、電力、プロセスごとの VRAM を報告します。Windows には load average がないため、この項目は値を作らずに空欄のままにしています。ドライブ容量はまだ取得していません。Fleet には Linux の GPU マシンと同じ形で加わります。ワンライナーのインストーラはまだないので、`GOOS=windows go build ./agent` でエージェントをビルドし、タスク スケジューラから実行します。
-
-> **ヘッドレスの Mac の場合は**、先に **システム設定 → 一般 → 共有 → リモートログイン** をオンにしておいてください。オフのままでは何もインストールできません。**LAN の外**のマシン（Tailscale・VPN・クラウド）には mDNS が届かないので、**Add machine…** でアドレスを指定して追加します。ポートをインターネットに直接公開するより、Tailscale や SSH トンネルを経由する方法をおすすめします。
-
-> **ロックダウンモードを有効にしている、またはファイアウォールで外部からの接続をすべてブロックしている Mac** には、ビューアからエージェントに接続できません。一覧に表示されないか、赤い点とともに TLS エラーやホスト名のエラーが出ます。その Mac で **システム設定 → ネットワーク → ファイアウォール → オプション** を開き、**外部からの接続をすべてブロック** をオフにして、SiliconScope（または `sscope-agent-mac`）が許可されていることを確認してから SiliconScope を再起動してください。[@progenitor-amborella](https://github.com/progenitor-amborella) さんが [#63](https://github.com/kennss/SiliconScope/issues/63) にまとめてくれた内容です。
-
-**エージェントの削除**は、対象のマシンで同じインストーラを `--uninstall` 付きで実行します。
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh -s -- --uninstall
-```
-
-サービスが停止し、バイナリ・トークン・証明書・キーチェーンの項目が削除されます。そのあと、ビューア側の Mac で Fleet サイドバーの該当マシンを右クリックし、**Forget pairing** を選びます。
+**📖 [Fleet マニュアル](docs/fleet.md)**（英語）— ヘッドレスの Mac、Linux GPU マシン、root 権限を渡さずに Tailscale でつなぐクラウドサーバー、Intel Mac、Windows、トークンの変更、エージェントの削除、つながらないときの確認点。
 
 ## 3.0 で追加された機能
 

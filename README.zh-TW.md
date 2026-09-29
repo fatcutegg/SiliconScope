@@ -71,32 +71,15 @@
 
 #### 安裝 agent
 
-所有平台都用同一個網址，在 Linux 上會安裝成 systemd 服務，在 macOS 上則是 LaunchAgent：
+Linux 和 macOS 都是同一行指令：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh
 ```
 
-Mac 版 agent **不需要 sudo**，所以透過 `ssh` 執行也能自動裝完，不必有人在旁邊操作。每個安裝指令碼最後都會印出一條 `sscope://pair…` 連結，貼到 App 的 **Add machine…**，新增*和*配對就一次完成。
+安裝結束時會印出一條 `sscope://pair…` 連結，貼到應用程式的 **Add machine…** 裡，新增和配對一步完成。如果是你正在用的 Mac，不需要裝 agent，打開 **Settings → Share this Mac to Fleet** 即可。
 
-如果是你平常就坐在前面用的那台 Mac，根本不需要 agent，到**設定 → Share this Mac** 打開即可。
-
-**在 Intel Mac 上**，agent 會回報 CPU 與記憶體，也就是那台機器實際有的東西。晶片層級的指標之所以沒有，是因為硬體本身就沒有：沒有 Neural Engine、沒有 Media Engine，也沒有統一記憶體頻寬或各電源域的功耗，這些資料來自只有 Apple Silicon 才提供的介面。App 本身仍然只支援 Apple Silicon。
-
-**在 Windows 電腦上**，agent 會回報 CPU 與記憶體，NVIDIA 顯示卡則透過和 Linux 相同的 `nvidia-smi` 路徑，回報使用率、VRAM、溫度、功耗與各程序的 VRAM 用量。Windows 沒有 load average，所以這個欄位保持空白，不會填上編造的數字；磁碟容量目前也還沒有收集。這台機器加入 Fleet 的方式和 Linux GPU 主機相同。目前還沒有一行指令就能完成的安裝程式，請用 `GOOS=windows go build ./agent` 建置 agent，再設成排程工作執行。
-
-> **不接螢幕的 Mac？** 請先開啟**系統設定 → 一般 → 共享 → 遠端登入**，否則沒辦法在上面安裝任何東西。
-> **不在同一個區域網路**（Tailscale、VPN、雲端）？mDNS 找不到它，請在 **Add machine…** 直接輸入位址新增。與其把連接埠開放到公開網路，建議改用 Tailscale 或 SSH 通道。
-
-> **開啟了封閉模式，或防火牆設為阻擋所有傳入連線的 Mac**，檢視端會連不上它的 agent：要不是根本不出現在清單裡，就是顯示紅點並出現 TLS 錯誤或無法解析主機名稱。請在那台 Mac 上打開**系統設定 → 網路 → 防火牆 → 選項**，關閉**阻斷所有傳入連線**，確認 SiliconScope（或 `sscope-agent-mac`）在允許清單中，再重新啟動 SiliconScope。這是 [@progenitor-amborella](https://github.com/progenitor-amborella) 在 [#63](https://github.com/kennss/SiliconScope/issues/63) 整理的方法。
-
-**移除 agent**：在那台機器上用 `--uninstall` 參數執行同一個安裝指令碼。
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh -s -- --uninstall
-```
-
-它會停止服務，並刪除執行檔、權杖、憑證與鑰匙圈。接著在檢視端的 Mac 上，於 Fleet 側邊欄對該機器按右鍵 → **Forget pairing**。
+**📖 [Fleet 使用手冊](docs/fleet.md)**（英文）——不接螢幕的 Mac、Linux GPU 主機、不給 agent root 權限、透過 Tailscale 連線的雲端伺服器、Intel Mac、Windows、更換 token、移除 agent，以及連不上時該檢查什麼。
 
 ## 3.0 新功能
 

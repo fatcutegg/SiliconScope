@@ -101,54 +101,19 @@ einklappbare Seitenleiste **Devices**. Klappst du sie ein, sieht alles exakt so 
 
 #### Einen Agent installieren
 
-Eine URL für alle Plattformen; unter Linux richtet sie einen systemd-Dienst ein, unter macOS einen
-LaunchAgent:
+Ein Befehl, unter Linux und macOS derselbe:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh
 ```
 
-Der Mac-Agent braucht **kein sudo**, die Installation läuft daher auch per `ssh` ohne Rückfragen
-durch. Am Ende gibt jeder Installer eine einzige `sscope://pair…`-Zeile aus. Fügst du sie unter
-**Add machine…** ein, ist der Rechner in einem Schritt hinzugefügt *und* gekoppelt.
+Am Ende steht ein `sscope://pair…`-Link. Füge ihn in der App unter **Add machine…** ein, und die
+Maschine ist in einem Schritt hinzugefügt *und* gekoppelt. Für einen Mac, an dem du selbst sitzt,
+brauchst du keinen Agent: **Settings → Share this Mac to Fleet**.
 
-Für einen Mac, an dem du selbst sitzt, brauchst du überhaupt keinen Agent:
-**Einstellungen → Share this Mac**.
-
-**Auf einem Intel-Mac** liefert der Agent CPU- und Speicherwerte, also das, was dieser Rechner
-tatsächlich zu bieten hat. Die Chip-Metriken fehlen, weil die zugehörige Hardware fehlt: Es gibt
-keine Neural Engine, keine Media Engine und weder Unified-Memory-Bandbreite noch Leistungsaufnahme
-je Domäne. Diese Werte stammen aus einer Schnittstelle, die nur Apple Silicon bereitstellt. Die App
-selbst läuft weiterhin ausschließlich auf Apple Silicon.
-
-**Auf einem Windows-Rechner** liefert der Agent CPU- und Speicherwerte und erfasst eine NVIDIA-Karte
-über denselben `nvidia-smi`-Weg wie unter Linux: Auslastung, VRAM, Temperatur, Leistungsaufnahme und
-VRAM je Prozess. Windows kennt keinen Load Average; das Feld bleibt deshalb leer, statt eine
-erfundene Zahl anzuzeigen. Die Laufwerkskapazität wird unter Windows noch nicht erfasst. Einen
-Installer als Einzeiler gibt es dafür noch nicht: Baue den Agent mit `GOOS=windows go build ./agent`
-und führe ihn als geplante Aufgabe aus.
-
-> **Mac ohne Bildschirm?** Aktiviere zuerst **Systemeinstellungen → Allgemein → Freigabe →
-> Entfernte Anmeldung**, sonst lässt sich darauf nichts installieren. **Außerhalb deines LAN**
-> (Tailscale, VPN, Cloud) reicht mDNS nicht hin; füge den Rechner dann unter **Add machine…** per
-> Adresse hinzu. Tailscale oder ein SSH-Tunnel ist dabei besser, als den Port öffentlich freizugeben.
-
-> **Ist der Blockierungsmodus aktiv oder blockiert die Firewall alle eingehenden Verbindungen,** erreicht der
-> Viewer den Agent nicht: Der Mac taucht gar nicht erst auf oder zeigt einen roten Punkt mit einem TLS- oder
-> Hostnamen-Fehler. Öffne auf diesem Mac **Systemeinstellungen → Netzwerk → Firewall → Optionen**, schalte
-> **Alle eingehenden Verbindungen blockieren** aus, prüfe, ob SiliconScope (bzw. `sscope-agent-mac`) zugelassen
-> ist, und starte SiliconScope danach neu. Herausgefunden hat das
-> [@progenitor-amborella](https://github.com/progenitor-amborella) in [#63](https://github.com/kennss/SiliconScope/issues/63).
-
-**Einen Agent entfernen:** Führe auf dem betreffenden Rechner denselben Installer mit `--uninstall` aus.
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh -s -- --uninstall
-```
-
-Der Befehl stoppt den Dienst und löscht Binary, Token, Zertifikat und Keychain. Anschließend
-klickst du auf dem Viewer-Mac in der Fleet-Seitenleiste mit der rechten Maustaste auf den Rechner
-und wählst **Forget pairing**.
+**📖 [Fleet-Handbuch](docs/fleet.md)** (Englisch) – Macs ohne Bildschirm, Linux-GPU-Rechner, ein
+Cloud-Server über Tailscale, ohne dem Agent root zu geben, Intel-Macs, Windows, Token wechseln, Agent
+entfernen und was zu tun ist, wenn eine Maschine keine Verbindung bekommt.
 
 ## Neu in 3.0
 

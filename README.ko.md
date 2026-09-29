@@ -93,47 +93,18 @@ Ubuntu 박스는 **262 tok/s**, 두 Mac은 **28 tok/s**가 나왔습니다. 시�
 
 #### 에이전트 설치
 
-플랫폼과 상관없이 URL은 하나입니다. Linux에는 systemd 서비스로, macOS에는 LaunchAgent로 설치됩니다.
+Linux와 macOS 모두 같은 명령 한 줄입니다.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh
 ```
 
-Mac 에이전트는 **sudo가 필요 없어서** `ssh`로 실행해도 중간에 멈추지 않고 끝까지 설치됩니다.
-설치가 끝나면 `sscope://pair…` 링크가 한 줄 출력됩니다. 앱의 **Add machine…**에 붙여 넣으면 기계
-추가와 페어링이 한 번에 끝납니다.
+설치가 끝나면 `sscope://pair…` 링크가 한 줄 출력됩니다. 앱의 **Add machine…**에 붙여 넣으면 기계 추가와
+페어링이 한 번에 끝납니다. 직접 앞에 앉아 쓰는 Mac이라면 에이전트가 필요 없습니다.
+**Settings → Share this Mac to Fleet**을 켜면 됩니다.
 
-앞에 앉아서 직접 쓰는 Mac이라면 에이전트를 깔 필요도 없습니다. **설정 → Share this Mac**을 켜면 됩니다.
-
-**Intel Mac**에서는 에이전트가 CPU와 메모리를 보냅니다. 그 기계에 있는 게 그것뿐이기 때문입니다.
-칩 수준 지표가 빠지는 건 해당 하드웨어가 없어서입니다. Neural Engine도 Media Engine도 없고, 통합
-메모리 대역폭과 도메인별 전력은 Apple Silicon만 제공하는 인터페이스에서 나옵니다. 앱 자체는 여전히
-Apple Silicon 전용입니다.
-
-**Windows**에서는 에이전트가 CPU와 메모리를 보내고, NVIDIA 카드는 Linux와 같은 `nvidia-smi`로
-사용률·VRAM·온도·전력·프로세스별 VRAM을 읽습니다. Windows에는 load average가 없어서 그 칸은 없는
-숫자를 만들어 넣지 않고 비워 둡니다. 드라이브 용량은 아직 수집하지 않습니다. Fleet에는 Linux GPU
-박스와 같은 방식으로 들어옵니다. 한 줄 설치 스크립트는 아직 없으니,
-`GOOS=windows go build ./agent` 로 에이전트를 빌드해 예약된 작업으로 실행하세요.
-
-> **헤드리스 Mac이라면** 먼저 **시스템 설정 → 일반 → 공유 → 원격 로그인**을 켜세요. 이게 꺼져 있으면
-> 아무것도 설치할 수 없습니다. **LAN 밖**(Tailscale, VPN, 클라우드)에 있는 기계는 mDNS로 찾을 수
-> 없으니 **Add machine…**에서 주소로 추가하세요. 포트를 인터넷에 그대로 열기보다는 Tailscale이나
-> SSH 터널을 쓰는 편이 안전합니다.
-
-> **차단 모드를 켰거나 방화벽이 들어오는 연결을 모두 막고 있으면** 뷰어가 에이전트에 닿지 못합니다.
-> 그 Mac이 목록에 아예 안 나오거나, 빨간 점과 함께 TLS 오류나 호스트 이름 오류가 납니다. 그 Mac에서
-> **시스템 설정 → 네트워크 → 방화벽 → 옵션**으로 가서 **들어오는 모든 연결 차단**을 끄고, SiliconScope(또는
-> `sscope-agent-mac`)가 허용돼 있는지 확인한 다음 SiliconScope를 다시 실행하세요.
-> [@progenitor-amborella](https://github.com/progenitor-amborella)가 [#63](https://github.com/kennss/SiliconScope/issues/63)에 정리해 준 내용입니다.
-
-**에이전트를 지우려면** 그 기계에서 같은 설치 스크립트를 `--uninstall`과 함께 실행합니다.
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh -s -- --uninstall
-```
-
-서비스를 멈추고 바이너리, 토큰, 인증서, 키체인을 지웁니다. 그다음 뷰어 Mac의 Fleet 사이드바에서 그 기계를 우클릭해 **Forget pairing**을 누르세요.
+**📖 [Fleet 매뉴얼](docs/fleet.md)** (영어) — 헤드리스 Mac, Linux GPU 박스, root 권한 없이 Tailscale로 붙이는
+클라우드 서버, Intel Mac, Windows, 토큰 교체, 에이전트 제거, 연결이 안 될 때 확인할 것.
 
 ## 3.0에서 달라진 점
 
