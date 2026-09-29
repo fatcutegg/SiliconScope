@@ -2,7 +2,7 @@
 #
 #  File:      package.sh
 #  Created:   2026-06-09
-#  Updated:   2026-09-24
+#  Updated:   2026-09-30
 #  Developer: Kennt Kim / Calida Lab
 #  Overview:  Builds release SiliconScope.app, Developer ID–signs it (hardened runtime),
 #             notarizes + staples it, then ships a notarized DMG with an /Applications
@@ -102,6 +102,11 @@ cat > "$APPDIR/Contents/Info.plist" <<PLIST
   <key>NSLocalNetworkUsageDescription</key><string>SiliconScope discovers monitoring agents on your local network to show remote machines (e.g. a Linux GPU box) in the Fleet view.</string>
   <key>NSBonjourServices</key>
   <array><string>_sscope-agent._tcp</string></array>
+  <!-- Fleet agents serve self-signed TLS that the app pins on first use (TOFU). ATS would demand
+       system trust first for any non-local address (Tailscale 100.64/10, VPN, cloud) and reject
+       it before the pin is checked. Every other URL is fixed https or loopback. -->
+  <key>NSAppTransportSecurity</key>
+  <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
 </dict>
 </plist>
 PLIST

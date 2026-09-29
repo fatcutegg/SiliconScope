@@ -2,7 +2,7 @@
 #
 #  File:      build-app.sh
 #  Created:   2026-06-12
-#  Updated:   2026-09-24
+#  Updated:   2026-09-30
 #  Overview:  Builds a local SiliconScope.app bundle from the SwiftPM executable.
 #  Notes:     This is for development/local install. It does not notarize or create
 #             a DMG; use scripts/package.sh for Developer ID distribution.
@@ -63,6 +63,11 @@ cat > "$APPDIR/Contents/Info.plist" <<PLIST
   <key>NSLocalNetworkUsageDescription</key><string>SiliconScope discovers monitoring agents on your local network to show remote machines (e.g. a Linux GPU box) in the Fleet view.</string>
   <key>NSBonjourServices</key>
   <array><string>_sscope-agent._tcp</string></array>
+  <!-- Fleet agents serve self-signed TLS that the app pins on first use (TOFU). ATS would demand
+       system trust first for any non-local address (Tailscale 100.64/10, VPN, cloud) and reject
+       it before the pin is checked. Every other URL is fixed https or loopback. -->
+  <key>NSAppTransportSecurity</key>
+  <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
 </dict>
 </plist>
 PLIST
