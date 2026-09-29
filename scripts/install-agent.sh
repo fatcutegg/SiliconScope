@@ -2,7 +2,7 @@
 #
 #  File:      install-agent.sh
 #  Created:   2026-07-22
-#  Updated:   2026-09-27
+#  Updated:   2026-09-30
 #  Developer: Kennt Kim / Calida Lab
 #  Overview:  THE install entry point for the SiliconScope fleet agent — one URL for every platform.
 #             On macOS it hands off to install-agent-mac.sh; on Linux it detects the CPU arch, fetches
@@ -17,7 +17,11 @@
 #             here (unlike the Mac agent, whose LaunchAgent needs none).
 #             Overrides (env): SSCOPE_PORT (default 7799), SSCOPE_REPO (default kennss/SiliconScope),
 #             SSCOPE_LOCAL_BIN (install a local binary instead of downloading — for release-less
-#             testing and offline/air-gapped installs). The service runs as the invoking user so
+#             testing and offline/air-gapped installs), SSCOPE_USER (run the service as this user,
+#             created as a no-login system account if missing — for a server whose only account is
+#             root), SSCOPE_DOCKER_HOST (where the agent reads Docker, e.g. tcp://127.0.0.1:2375 for
+#             a read-only socket proxy; the default socket needs the docker group, which is root in
+#             all but name). Without SSCOPE_USER the service runs as the invoking user, so
 #             nvidia-smi and a user-run Ollama are reachable.
 #
 set -eu
@@ -61,7 +65,14 @@ if [ "${1:-}" = "--uninstall" ] || [ "${1:-}" = "uninstall" ]; then
   echo "  On the viewer Mac, right-click this machine in the Fleet sidebar → Forget pairing."
   exit 0
 fi
-RUN_USER="${SUDO_USER:-$(id -un)}"
+RUN_USER="${SSCOPE_USER:-${SUDO_USER:-$(id -un)}}"
+if [ -n "${SSCOPE_USER:-}" ] && ! id "$SSCOPE_USER" >/dev/null 2>&1; then
+  echo "▸ Creating service user $SSCOPE_USER (system account: no login, no home)…"
+  $SUDO useradd --system --no-create-home --shell /usr/sbin/nologin "$SSCOPE_USER"
+fi
+# Only when asked: the default is the local socket, read with the service user's own groups.
+DOCKER_ENV=""
+[ -n "${SSCOPE_DOCKER_HOST:-}" ] && DOCKER_ENV="Environment=DOCKER_HOST=$SSCOPE_DOCKER_HOST"
 
 # --- obtain the binary (local file or latest release) ---
 if [ -n "${SSCOPE_LOCAL_BIN:-}" ]; then
@@ -106,6 +117,7 @@ RestartSec=5
 # ProtectSystem=strict. Older systemd ignores both lines below it, and the directory made above
 # is used as it is.
 Environment=SSCOPE_CONFIG_DIR=$STATE_DIR
+$DOCKER_ENV
 StateDirectory=sscope-agent
 # Hardening: the agent otherwise only reads /proc and shells out to nvidia-smi.
 NoNewPrivileges=true
@@ -139,8 +151,17 @@ if [ -n "$TOKEN" ]; then
   echo
   echo "      sscope://pair?name=$(hostname)&host=$IP&port=$PORT&token=$TOKEN"
   echo
+  # A box on a tailnet is usually reached through it (a cloud server's public address is
+  # firewalled), so offer that address too rather than asking the user to edit the link.
+  TS_IP="$(tailscale ip -4 2>/dev/null | head -1 || true)"
+  if [ -n "$TS_IP" ] && [ "$TS_IP" != "$IP" ]; then
+    echo "  From a Mac on your tailnet, use this one instead:"
+    echo
+    echo "      sscope://pair?name=$(hostname)&host=$TS_IP&port=$PORT&token=$TOKEN"
+    echo
+  fi
   echo "  It carries this box's name, address and pairing token — one paste"
-  echo "  and it joins your Fleet, encrypted. (Over Tailscale/VPN, swap the"
+  echo "  and it joins your Fleet, encrypted. (Over another VPN, swap the"
   echo "  host for that network's address.)"
 else
   echo "  Pairing token (read it with: sudo cat $TOKEN_FILE)"

@@ -3,15 +3,17 @@
 //
 //  File:      workloads_linux.go
 //  Created:   2026-09-29
-//  Updated:   2026-09-29
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  What is running on a Linux GPU box besides the model server: Docker containers
 //             (read from the Engine API over its unix socket, restart counts included), which
 //             container a GPU process belongs to, and a ComfyUI server's queue.
-//  Notes:     Docker is read over /var/run/docker.sock, not by running the CLI: the service is
-//             hardened, and the socket is the API the CLI itself uses. The service user needs the
-//             `docker` group; without it the socket refuses us and containers are reported as
-//             unknown (nil), never as none.
+//  Notes:     Docker is read through its Engine API, not by running the CLI: the service is
+//             hardened, and the API is what the CLI itself uses. By default that is
+//             /var/run/docker.sock, which needs the `docker` group — root in all but name, since it
+//             can start a container that mounts the host. DOCKER_HOST=tcp://127.0.0.1:PORT points
+//             the agent at a read-only socket proxy instead, so it runs as an unprivileged user.
+//             Unreachable either way, containers are reported as unknown (nil), never as none.
 //             ComfyUI is asked only when a ComfyUI process is SEEN on the host, on the port in its
 //             own argv (#53: observe the process, don't poll the neighbourhood). A ComfyUI inside a
 //             container is skipped: asking localhost for it would reach whatever the host serves on
@@ -34,13 +36,31 @@ import (
 	"time"
 )
 
-var dockerClient = &http.Client{
-	Timeout: 2 * time.Second,
-	Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-		var d net.Dialer
-		return d.DialContext(ctx, "unix", "/var/run/docker.sock")
-	}},
+// dockerEndpoint reads DOCKER_HOST the way the Docker CLI does: unix:///path for a socket,
+// tcp://host:port for an HTTP endpoint (a read-only socket proxy, so the agent needs neither root
+// nor the docker group, which is root in all but name). Unset means the local socket. Pure, for
+// testing.
+func dockerEndpoint(dockerHost string) (network, address string) {
+	switch {
+	case strings.HasPrefix(dockerHost, "tcp://"):
+		return "tcp", strings.TrimPrefix(dockerHost, "tcp://")
+	case strings.HasPrefix(dockerHost, "unix://"):
+		return "unix", strings.TrimPrefix(dockerHost, "unix://")
+	default:
+		return "unix", "/var/run/docker.sock"
+	}
 }
+
+var dockerClient = func() *http.Client {
+	network, address := dockerEndpoint(os.Getenv("DOCKER_HOST"))
+	return &http.Client{
+		Timeout: 2 * time.Second,
+		Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, network, address)
+		}},
+	}
+}()
 
 var (
 	containersMu     sync.Mutex

@@ -3,9 +3,10 @@
 //
 //  File:      workloads_linux_test.go
 //  Created:   2026-09-29
-//  Updated:   2026-09-29
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
-//  Overview:  Tests for recognising a ComfyUI server and reading a container id from a cgroup.
+//  Overview:  Tests for recognising a ComfyUI server, reading a container id from a cgroup, naming
+//             a process's Python script, and following DOCKER_HOST to the Docker API.
 //  Notes:     argv shapes follow kennt-Ubuntu: a host ComfyUI (`venv/bin/python main.py --listen
 //             0.0.0.0`) beside a ComfyUI worker container. Run on Linux (`GOOS=linux go test -c`).
 //
@@ -65,5 +66,19 @@ func TestScriptOfNamesThePythonScript(t *testing.T) {
 	}
 	if got := scriptOf([]string{"/usr/local/lib/ollama/llama-server", "--model", "x.py"}); got != "" {
 		t.Errorf("not Python, yet named a script: %q", got)
+	}
+}
+
+func TestDockerEndpointFollowsDockerHost(t *testing.T) {
+	cases := map[string][2]string{
+		"":                                  {"unix", "/var/run/docker.sock"},
+		"tcp://127.0.0.1:2375":              {"tcp", "127.0.0.1:2375"},
+		"unix:///run/user/1000/docker.sock": {"unix", "/run/user/1000/docker.sock"},
+	}
+	for in, want := range cases {
+		n, a := dockerEndpoint(in)
+		if n != want[0] || a != want[1] {
+			t.Errorf("%q: got (%s, %s), want %v", in, n, a, want)
+		}
 	}
 }
