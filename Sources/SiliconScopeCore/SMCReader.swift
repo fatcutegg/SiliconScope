@@ -1,13 +1,14 @@
 //
 //  File:      SMCReader.swift
 //  Created:   2026-06-08
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Minimal read-only Apple SMC client (sudoless) for fan speed and other
 //             scalar keys. Opens the AppleSMC IOService and reads keys via the fixed
 //             kernel ABI: readKeyInfo (cmd 9) then readBytes (cmd 5).
 //  Notes:     SMCKeyData layout MUST match the kernel struct exactly (do not reorder).
-//             Decodes flt/ui8/ui16/ui32/fpe2. Read-only — never writes SMC keys.
+//             Decodes flt/ui8/ui16/ui32/fpe2/sp78/ioft. Read-only — never writes SMC keys.
+//             sp78 is how Intel Macs report temperatures (signed, 8 fractional bits).
 //             fpe2 is a 16-bit big-endian fixed-point with 2 fractional bits (true value =
 //             raw uint16 / 4); the scalar decode lives in the pure `decode(type:bytes:)` so
 //             it can be unit-tested without hardware (Apple SMC fixed-point convention).
@@ -71,6 +72,9 @@ final class SMCReader {
     /// Extracted from the hardware-coupled reader so it is unit-testable in isolation — this is
     /// the gateway for every SMC scalar (curated temps, fan RPM, FNum, and the power/current/
     /// voltage rails surfaced by `allKeys`/`allTemperatureKeys`), so a wrong case here warps them all.
+    /// The FourCC types a temperature key is stored as: `flt` on Apple Silicon, `sp78` on Intel.
+    static let temperatureTypes: Set<String> = ["flt ", "sp78"]
+
     static func decode(type: String, bytes: [UInt8]) -> Double? {
         switch type {
         case "ui8 ": return Double(bytes[0])
@@ -83,6 +87,14 @@ final class SMCReader {
             guard bytes.count >= 2 else { return nil }
             let raw = (UInt16(bytes[0]) << 8) | UInt16(bytes[1])
             return Double(raw) / 4.0
+        case "sp78":
+            // 16-bit big-endian SIGNED fixed point with 8 fractional bits: value = Int16 / 256.
+            // Intel Macs report their temperatures this way (TC0P, TG0P, TB0T …). Without it the
+            // Intel key scan found no temperature at all, and a headless Intel agent had nothing
+            // to send (#69).
+            guard bytes.count >= 2 else { return nil }
+            let raw = Int16(bitPattern: (UInt16(bytes[0]) << 8) | UInt16(bytes[1]))
+            return Double(raw) / 256.0
         case "ioft":
             // 64-bit LITTLE-endian fixed point with 16 fractional bits: value = Int64 / 65536.
             // Decoded from raw bytes on an M1 Max and checked against two independent readers at
@@ -96,8 +108,9 @@ final class SMCReader {
         }
     }
 
-    /// Enumerates all `flt`-typed "T…" temperature keys present on this Mac.
-    /// Run once (it scans every SMC key); then read the returned keys each sample.
+    /// Enumerates the "T…" temperature keys present on this Mac, of the two types temperatures
+    /// come in: `flt` (Apple Silicon) and `sp78` (Intel). Run once (it scans every SMC key); then
+    /// read the returned keys each sample.
     func temperatureKeys() -> [String] {
         guard let count = readDouble("#KEY"), count > 0 else { return [] }
         var keys: [String] = []
@@ -109,7 +122,7 @@ final class SMCReader {
             guard call(&input, &output) else { continue }
             let key = string(from: output.key)
             guard key.hasPrefix("T") else { continue }
-            if let (type, _) = readKey(key), type == "flt " { keys.append(key) }
+            if let (type, _) = readKey(key), Self.temperatureTypes.contains(type) { keys.append(key) }
         }
         return keys
     }

@@ -1,7 +1,7 @@
 //
 //  File:      MachineMetrics+Mac.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Maps a local Apple-Silicon live snapshot (SystemSnapshot + CPUTopology) into the
 //             source-agnostic MachineMetrics wire schema, so a Mac can serve itself to the fleet the
@@ -126,12 +126,10 @@ public extension MachineMetrics {
         )
         #endif
 
-        #if arch(x86_64)
-        // Pressure is the kernel's own verdict and is equally true on Intel. Temperatures are not
-        // sent here: the sensor map is Apple Silicon's, and an Intel Mac's SMC is a different key
-        // space that #59 deliberately left out because nobody could verify it without the hardware.
-        let thermal = FleetThermal(pressure: s.thermal.pressure.rawValue)
-        #else
+        // Sent on both architectures. #59 left Intel temperatures out because the key scan only
+        // understood Apple Silicon's `flt` keys; it now reads Intel's `sp78` keys and names them by
+        // Intel's own conventions (TemperatureSampler.intelName), so an Intel agent reports what its
+        // SMC says instead of nothing (#69). Fans likewise: nil when the fan count could not be read.
         let t = s.temperature
         // 0 °C is how the sampler says "no such sensor on this machine" (`hasCPU` etc.), so it is
         // sent as absent — a fanless Air with no battery reading must not arrive as a 0 °C battery.
@@ -145,9 +143,9 @@ public extension MachineMetrics {
             sensors: t.groups.map { g in
                 FleetSensorGroup(category: g.category.rawValue,
                                  sensors: g.sensors.map { FleetSensor(rawName: $0.rawName, name: $0.name, celsius: $0.celsius) })
-            }
+            },
+            fanRPMs: s.thermal.fansMeasured == false ? nil : s.thermal.fanRPMs
         )
-        #endif
 
         // Disk and network come from IOKit block-storage counters, the volume's resource values and
         // the interface counters — none of it IOReport, so it is sent on both architectures.

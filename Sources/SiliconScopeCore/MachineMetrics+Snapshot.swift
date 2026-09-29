@@ -1,7 +1,7 @@
 //
 //  File:      MachineMetrics+Snapshot.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Reverse mapping: synthesize a local-style SystemSnapshot (+ CPUTopology) from a remote
 //             MachineMetrics, so the SAME DashboardView renders a remote Mac exactly like This Mac.
@@ -66,6 +66,17 @@ public extension MachineMetrics {
             s.ane = ap.aneActiveFraction.map { ANESample(activeFraction: $0, clusters: [$0]) }
 
             s.thermal.fanRPMs = ap.fanRPMs
+        }
+        // Fans: the common field when the agent sends it; else the Apple block (agents before it,
+        // which only ever reported Apple Silicon fans); else nothing is known — which must read as
+        // unknown, not fanless. An Intel agent never sends the Apple block, so before this every
+        // Intel Mac read "fanless", two fans or not (#69).
+        if let fans = thermal?.fanRPMs {
+            s.thermal.fanRPMs = fans
+            s.thermal.fansMeasured = true
+        } else if apple == nil {
+            s.thermal.fanRPMs = []
+            s.thermal.fansMeasured = false
         }
         s.temperature.gpuCelsius = gpus.first?.temperatureC ?? 0
         if let t = thermal {

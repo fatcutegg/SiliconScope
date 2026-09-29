@@ -1,7 +1,7 @@
 //
 //  File:      MenuBarMetric.swift
 //  Created:   2026-06-19
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  iStat-style menu-bar glyph renderers and the per-metric dropdown panels. Glyphs are
 //             drawn to NSImage (the only reliable way to render a live status-item label) and adapt
@@ -822,7 +822,7 @@ struct SensorsMenuDropdown: View {
             MenuSectionHeader("Sensors")
 
             if temp.groups.isEmpty {
-                Text("no sensors available")
+                Text("no sensor readings")
                     .font(Theme.font(.body)).foregroundStyle(Theme.dim)
             } else {
                 MenuSectionHeader("Temperatures")
@@ -859,7 +859,8 @@ struct SensorsMenuDropdown: View {
                     SensorFanRow(label: fanLabel(idx, count: thermal.fanRPMs.count), rpm: rpm)
                 }
             } else {
-                Text("Fanless").font(Theme.font(.body)).foregroundStyle(Theme.dim)
+                // No fan reading is not the same as no fans (#69).
+                Text(thermal.fansUnknown ? "—" : "Fanless").font(Theme.font(.body)).foregroundStyle(Theme.dim)
             }
 
             Divider()

@@ -1,7 +1,7 @@
 //
 //  File:      MachineMetrics.swift
 //  Created:   2026-07-21
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  The source-agnostic fleet metric schema — the boundary the Mac aggregator consumes
 //             for every remote machine, regardless of how the data arrives. Mirrors the Go Linux
@@ -194,12 +194,18 @@ public struct FleetThermal: Codable, Sendable, Equatable {
     public let gpuCelsius: Double?
     public let batteryCelsius: Double?
     @DefaultEmpty public var sensors: [FleetSensorGroup]
+    /// Fan speeds in RPM, on every architecture. nil = the agent could not read the fan count, or
+    /// predates this field; [] = the machine told us it has no fans. The two used to be one empty
+    /// list, and an Intel MacBook Pro with two fans showed "fanless" (#69). Apple Silicon agents
+    /// also keep filling `FleetApple.fanRPMs` for viewers older than this field.
+    public let fanRPMs: [Double]?
 
     public init(pressure: String?, cpuCelsius: Double? = nil, cpuMaxCelsius: Double? = nil,
                 gpuCelsius: Double? = nil, batteryCelsius: Double? = nil,
-                sensors: [FleetSensorGroup] = []) {
+                sensors: [FleetSensorGroup] = [], fanRPMs: [Double]? = nil) {
         self.pressure = pressure; self.cpuCelsius = cpuCelsius; self.cpuMaxCelsius = cpuMaxCelsius
         self.gpuCelsius = gpuCelsius; self.batteryCelsius = batteryCelsius; self.sensors = sensors
+        self.fanRPMs = fanRPMs
     }
 }
 

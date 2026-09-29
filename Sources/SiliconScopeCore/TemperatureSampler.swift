@@ -1,7 +1,7 @@
 //
 //  File:      TemperatureSampler.swift
 //  Created:   2026-06-08
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Reads categorized temperatures sudolessly. Prefers the rich Apple Silicon
 //             HID sensor set (IOHIDEventSystem, via HIDSensorReader) — the source iStat
@@ -9,7 +9,9 @@
 //             (Intel / older Macs), classifying keys by prefix and folding per-core sensors.
 //  Notes:     HID names are raw PMU labels ("PMU tdie3", "NAND CH0 temp", "gas gauge
 //             battery"); friendlyHID() strips/classifies them. SMC prefix map: Tp*=CPU,
-//             Tg*=GPU, Tm*=Memory, TB*=Battery. Values outside (5,130)C are dropped.
+//             Tg*=GPU, Tm*=Memory, TB*=Battery on Apple Silicon; TC*=CPU, TG*=GPU,
+//             TM*=Memory, TB*=Battery on Intel, whose keys are named, not triplets, so they are
+//             neither renumbered nor folded. Values outside (5,130)C are dropped.
 //
 import Foundation
 
@@ -103,12 +105,15 @@ public final class TemperatureSampler {
             var sensors: [TempSensor] = []
             for (index, key) in keys.enumerated() {
                 guard let value = smc.readDouble(key), value > 5, value < 120 else { continue }
-                let label = category == .other ? key : "\(category.rawValue) \(index + 1)"
+                let label = Self.isIntel
+                    ? (Self.intelName(for: key) ?? key)
+                    : (category == .other ? key : "\(category.rawValue) \(index + 1)")
                 sensors.append(TempSensor(rawName: key, name: label, celsius: value))
             }
             // Apple Silicon exposes ~3 thermal sensors per CPU core; fold them back to
             // one reading per core (hottest of the group) so the count matches reality.
-            if category == .cpu { sensors = foldToCores(sensors) }
+            // Intel keys are named sensors (proximity, die, per-core), not triplets: never fold them.
+            if category == .cpu && !Self.isIntel { sensors = foldToCores(sensors) }
             guard !sensors.isEmpty else { continue }
 
             let group = SensorGroup(category: category, sensors: sensors)
@@ -138,12 +143,47 @@ public final class TemperatureSampler {
     }
 
     /// Maps an SMC key to a friendly category by its documented Apple Silicon prefix.
-    static func category(for key: String) -> SensorCategory {
+    /// Whether the key scan reads an Intel Mac's SMC. Its key names mean different things from
+    /// Apple Silicon's (TC0P is a CPU proximity sensor there; Apple Silicon uses lowercase `Tp`).
+    #if arch(x86_64)
+    static let isIntel = true
+    #else
+    static let isIntel = false
+    #endif
+
+    static func category(for key: String, intel: Bool = isIntel) -> SensorCategory {
         if key.hasPrefix("TB") { return .battery }
+        if intel {
+            if key.hasPrefix("TC") { return .cpu }
+            if key.hasPrefix("TG") { return .gpu }
+            if key.hasPrefix("TM") { return .memory }
+            return .other
+        }
         if key.hasPrefix("Tp") { return .cpu }      // CPU cores
         if key.hasPrefix("Tg") { return .gpu }
         if key.hasPrefix("Tm") { return .memory }
         return .other
+    }
+
+    /// A readable name for the Intel keys whose meaning is conventional across Intel Macs, so the
+    /// panel says what a sensor measures rather than inventing an order ("CPU 3"). Anything else
+    /// keeps its raw key: a name we cannot vouch for is worse than the key itself.
+    static func intelName(for key: String) -> String? {
+        let c = Array(key)
+        guard c.count == 4 else { return nil }
+        switch key {
+        case "TC0P": return "CPU proximity"
+        case "TC0D", "TC0E", "TC0F": return "CPU die"
+        case "TG0P": return "GPU proximity"
+        case "TG0D": return "GPU die"
+        case "TM0P": return "Memory proximity"
+        default: break
+        }
+        // TC1C … TC9C: one per CPU core.
+        if c[0] == "T", c[1] == "C", c[3] == "C", let n = c[2].wholeNumberValue, n > 0 { return "CPU core \(n)" }
+        // TB0T, TB1T, TB2T: one per battery cell pack.
+        if c[0] == "T", c[1] == "B", c[3] == "T", let n = c[2].wholeNumberValue { return "Battery \(n + 1)" }
+        return nil
     }
 
     /// Diagnostic readout for verifying / contributing sensor key tables: the detected

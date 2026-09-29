@@ -1,7 +1,7 @@
 //
 //  File:      DashboardView.swift
 //  Created:   2026-06-08
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Full-window dashboard. Header (chip, cores, SoC power, battery), then
 //             CPU + GPU side by side, combined Memory|Bandwidth and Network|Disk cards
@@ -1217,9 +1217,10 @@ private struct SensorsCard: View {
                         Text("Fans").font(Theme.font(.body)).foregroundStyle(Theme.dim)
                         // Two fan speeds plus a unit is the longest string in this header, and it
                         // wrapped at 130 % zoom. Row text shrinks; it never wraps.
+                        // "fanless" is a claim; with no fan reading at all the honest answer is a dash (#69).
                         Text(thermal.hasFans
                             ? thermal.fanRPMs.map { String(format: "%.0f", $0) }.joined(separator: " / ") + " rpm"
-                            : "fanless")
+                            : (thermal.fansUnknown ? "—" : "fanless"))
                             .font(Theme.font(.body, .strong)).foregroundStyle(Theme.text)
                             .lineLimit(1).minimumScaleFactor(0.75)
                     }
@@ -1227,7 +1228,7 @@ private struct SensorsCard: View {
                 }
                 Divider().overlay(Theme.border)
                 if temperature.groups.isEmpty {
-                    Text("no sensors available")
+                    Text("no sensor readings")
                         .font(Theme.font(.body)).foregroundStyle(Theme.dim)
                     Spacer(minLength: 0)
                 } else {

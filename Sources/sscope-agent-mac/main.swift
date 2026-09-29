@@ -1,7 +1,7 @@
 //
 //  File:      main.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Headless SiliconScope fleet agent for a Mac (launchd / CLI). Samples this Mac's live
 //             metrics via Core's SystemSampler once a second, maps them to MachineMetrics, and serves
@@ -11,7 +11,8 @@
 //             from `SystemSampler().sample()` in a background loop instead of the @MainActor monitor.
 //             Sampling blocks ~interval, and FleetAgentServer's SecPKCS12Import blocks on a secd XPC
 //             round trip, so both run off the main thread. Flags: --version, --print-token,
-//             --pair-url (one-line pairing handoff for the viewer),
+//             --pair-url (one-line pairing handoff for the viewer), --once (print one sample as
+//             JSON and exit — the diagnostic for a machine we can't sit at, e.g. Intel in #69),
 //             --serve :PORT (default 7799). A running AI runtime's local API is asked what it has
 //             loaded (localhost only, only while one is observed), so remote pages show the model.
 //
@@ -160,6 +161,37 @@ let sampler = SystemSampler()
 let topology = sampler.topology
 let engine = MetricsEngine(topology: topology)
 
+/// The payload for one sample — the single place it is built, so `--once` prints exactly what the
+/// server sends. A closure rather than a function: top-level functions are main-actor isolated in
+/// Swift 6, and the sample loop calls this from its own queue, the way it always read `engine`.
+let metrics: (SystemSnapshot, Date, FleetTokenRate?) -> MachineMetrics = { snap, now, rate in
+    MachineMetrics.mac(
+        snapshot: snap, topology: topology, hostname: hostname, machineId: machineId,
+        osName: osName, agentVersion: agentVersion,
+        tsMillis: Int64(now.timeIntervalSince1970 * 1000), loadAvg1: loadAvg1(),
+        anePeakWatts: engine.anePeakWatts, mediaPeakGBs: engine.mediaPeakGBs,
+        bandwidthPeakGBs: engine.bandwidthPeakGBs,
+        gpuClockPeakMHz: engine.gpuClockPeakMHz,
+        tokenRate: rate
+    )
+}
+
+// One sample to stdout, then exit: what a user pastes into an issue from a machine we don't have.
+// CPU usage is a delta against the previous call, so the first sample is taken and discarded.
+if args.contains("--once") {
+    _ = sampler.sample(interval: 0.2)
+    Thread.sleep(forTimeInterval: 1)
+    let snap = sampler.sample(interval: 0.2)
+    engine.ingest(snap, dt: 1)
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    if let data = try? encoder.encode(metrics(snap, Date(), nil)) {
+        FileHandle.standardOutput.write(data)
+        print()
+    }
+    exit(0)
+}
+
 // What the running runtime has loaded, so a remote page shows the model the way This Mac does (#56).
 // Only a runtime the process scan has SEEN is asked, and only over localhost — no runtime, no
 // request. Ports are the runtimes' defaults: the app's per-runtime port settings have no headless
@@ -190,17 +222,9 @@ sampleQueue.async {
         let dt = now.timeIntervalSince(lastTick)
         lastTick = now
         engine.ingest(snap, dt: dt)
-        let metrics = MachineMetrics.mac(
-            snapshot: snap, topology: topology, hostname: hostname, machineId: machineId,
-            osName: osName, agentVersion: agentVersion,
-            tsMillis: Int64(now.timeIntervalSince1970 * 1000), loadAvg1: loadAvg1(),
-            anePeakWatts: engine.anePeakWatts, mediaPeakGBs: engine.mediaPeakGBs,
-            bandwidthPeakGBs: engine.bandwidthPeakGBs,
-            gpuClockPeakMHz: engine.gpuClockPeakMHz,
-            tokenRate: tokenRate.latest(llamaCppPort: snap.aiRuntime.llamaCppPort,
-                                        lmStudioRunning: snap.aiRuntime.isLMStudioRunning)
-        )
-        if let d = try? JSONEncoder().encode(metrics) { cache.set(d) }
+        let payload = metrics(snap, now, tokenRate.latest(llamaCppPort: snap.aiRuntime.llamaCppPort,
+                                                          lmStudioRunning: snap.aiRuntime.isLMStudioRunning))
+        if let d = try? JSONEncoder().encode(payload) { cache.set(d) }
         Thread.sleep(forTimeInterval: 0.8)   // total cadence ≈ 1 s
     }
 }

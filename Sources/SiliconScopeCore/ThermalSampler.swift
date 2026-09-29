@@ -1,12 +1,12 @@
 //
 //  File:      ThermalSampler.swift
 //  Created:   2026-06-08
-//  Updated:   2026-06-08
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Reads thermal pressure (ProcessInfo) and fan RPMs (SMC) sudolessly.
-//  Notes:     Fan keys: FNum = fan count (ui8), F{i}Ac = fan i actual RPM (flt).
-//             SMC may be unavailable; fanRPMs is then empty and we still report
-//             thermal pressure. Per-sensor die temperatures come later via the HID
+//  Notes:     Fan keys: FNum = fan count (ui8), F{i}Ac = fan i actual RPM (flt on Apple
+//             Silicon, fpe2 on older Intel). SMC may be unavailable; fanRPMs is then empty,
+//             fansMeasured is false, and we still report thermal pressure. Per-sensor die temperatures come later via the HID
 //             sensor API (richer than SMC on Apple Silicon).
 //
 import Foundation
@@ -29,8 +29,12 @@ public final class ThermalSampler {
         @unknown default: result.pressure = .unknown
         }
 
-        if let smc {
-            let fanCount = Int(smc.readDouble("FNum") ?? 0)
+        // "No fans" needs the SMC to SAY zero fans. A missing SMC or an unreadable FNum is not an
+        // answer, and reporting it as fanless is how a two-fan Intel MacBook Pro read "fanless" (#69).
+        result.fansMeasured = false
+        if let smc, let count = smc.readDouble("FNum") {
+            result.fansMeasured = true
+            let fanCount = Int(count)
             var rpms: [Double] = []
             for i in 0..<max(fanCount, 0) {
                 if let rpm = smc.readDouble("F\(i)Ac"), rpm >= 0, rpm < 100_000 {
