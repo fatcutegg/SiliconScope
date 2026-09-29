@@ -1,15 +1,16 @@
 //
 //  File:      LinuxServerView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-29
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Detail dashboard for a remote LINUX / NVIDIA server — GPU-centric, distinct from the
 //             Mac layout. The header carries the machine's identity (OS, agent, cores, RAM, GPU,
 //             VRAM). Then three rows on This Mac's grid constants, grouped by subject: the GPU
 //             (util/VRAM chart | NVIDIA detail), what runs on it (compute processes | AI runtime
-//             with Ollama and ComfyUI | containers),
-//             and the host (CPU/RAM chart | storage). Three rows to This Mac's four, with lists
-//             scrolling inside their cards, so the page is never taller than This Mac's.
+//             with Ollama and ComfyUI | containers), and the host (CPU/RAM chart | storage). A
+//             GPU-less box keeps the workload row, minus the card's column. Three rows to This
+//             Mac's four, with lists scrolling inside their cards, so the page is never taller
+//             than This Mac's.
 //             Deliberately omits Apple-only concepts (ANE / E-P / Media).
 //  Notes:     Reuses the app's shared `Sparkline` + `MetricPalette` (line + gradient fill, NOT Swift
 //             Charts) so it matches the local GPU/CPU cards — GPU=green, VRAM=sky-cyan, CPU=blue,
@@ -51,12 +52,18 @@ struct LinuxServerView: View {
                             if g.hasExtendedDetail { gpuDetailCard(g) }
                         }
                         .frame(minHeight: Layout.Row.dense)
+                    }
 
-                        // What runs on the card: processes, the AI runtime, and the containers around
-                        // them — three to the row, so a new subject costs no height.
+                    // What runs on the machine: the card's processes, the AI runtime, and the
+                    // containers around them — three to the row, so a new subject costs no height.
+                    // A GPU-less box (a cloud server running Docker) still has workloads; only the
+                    // card-bound column goes. There, a silent runtime is left out rather than shown
+                    // as "none", and a box with neither gets no row.
+                    let showRuntime = g != nil || hasRuntime(m)
+                    if g != nil || showRuntime || m.containers != nil {
                         HStack(alignment: .top, spacing: Space.row) {
-                            computeProcesses(g)
-                            runtimeCard(m)
+                            if let g { computeProcesses(g) }
+                            if showRuntime { runtimeCard(m) }
                             if let containers = m.containers { containersCard(containers) }
                         }
                         .frame(height: Layout.Row.scrolling)
@@ -239,6 +246,11 @@ struct LinuxServerView: View {
         }
     }
 
+    /// Whether any AI runtime reported in: a decode rate, ComfyUI, or a running Ollama.
+    private func hasRuntime(_ m: MachineMetrics) -> Bool {
+        m.llm?.rate != nil || m.comfyui != nil || m.llm?.ollama?.running == true
+    }
+
     /// What the machine's AI runtime reports: its last decode rate and the models it has. One card,
     /// because on a GPU box they are the same subject.
     private func runtimeCard(_ m: MachineMetrics) -> some View {
@@ -252,7 +264,7 @@ struct LinuxServerView: View {
                 if m.llm?.rate != nil || m.comfyui != nil { Divider().overlay(Theme.border) }
                 ScrollView { ollamaRows(o) }
             }
-            if m.llm?.rate == nil && m.llm?.ollama?.running != true && m.comfyui == nil {
+            if !hasRuntime(m) {
                 Text("no runtime reported").font(Theme.font(.caption)).foregroundStyle(.secondary)
             }
         }
