@@ -1,7 +1,7 @@
 //
 //  File:      FleetOverviewView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-24
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  At-a-glance view of every machine at once — an adaptive grid of compact tiles. THIS
 //             MAC is always the first tile (a laptop glyph, taps through to its full dashboard);
@@ -9,7 +9,9 @@
 //             dashboard: a GPU+VRAM mini graph and a CPU+RAM mini graph, each overlaying two
 //             `Sparkline` traces (line + gradient fill), with the caption's metric word tinted its
 //             line color so it doubles as the legend. So a fleet of GPU boxes / Mac servers reads in
-//             one screen ("which box is busy / idle / hot right now").
+//             one screen ("which box is busy / idle / hot right now"). With no remote machine yet,
+//             the page carries the install command (copyable) and a link to docs/fleet.md. A tile
+//             of a box running Docker ends with its container count, and how many were restarted.
 //  Notes:     Uses the shared `Sparkline` + `MetricPalette` (NOT Swift Charts) to match the local
 //             GPU/CPU cards exactly — GPU=green, VRAM=sky-cyan, CPU=blue, RAM=amber. All four series
 //             are normalized to 0…1 (util ÷100; VRAM/RAM fractions as-is) to share one axis. FleetTile
@@ -40,21 +42,53 @@ struct FleetOverviewView: View {
             }
             .padding(Space.page)
 
-            if fleet.entries.isEmpty {
-                VStack(spacing: Space.row) {
-                    ProgressView().controlSize(.small)
-                    Text("Searching for other agents on your network…")
-                        .font(Theme.font(.caption)).foregroundStyle(.secondary)
-                    Text("Install the agent on a machine to see it here.")
-                        .font(Theme.font(.caption)).foregroundStyle(.tertiary)
-                }
-                .frame(maxWidth: .infinity).padding(.bottom, Space.page)
-            }
+            if fleet.entries.isEmpty { emptyFleet }
         }
         .background(Theme.bg)
         .foregroundStyle(Theme.text)
         .navigationTitle("Fleet")
     }
+
+    /// The one screen everyone who opens Fleet sees before adding anything, so it carries the whole
+    /// way in: the command, what to do with what it prints, and the manual for every other case.
+    /// Few people read a README; this is where the feature is found.
+    private var emptyFleet: some View {
+        VStack(spacing: Space.row) {
+            HStack(spacing: Space.row) {
+                ProgressView().controlSize(.small)
+                Text("Searching for other agents on your network…")
+                    .font(Theme.font(.caption)).foregroundStyle(.secondary)
+            }
+            Text("To add a machine, run this on it (Linux or macOS):")
+                .font(Theme.font(.caption)).foregroundStyle(.secondary)
+            HStack(spacing: Space.row) {
+                Text(Self.installCommand)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(Self.installCommand, forType: .string)
+                } label: { Image(systemName: "doc.on.doc") }
+                    .buttonStyle(.borderless).help("Copy command")
+            }
+            .padding(.horizontal, Space.section).padding(.vertical, Space.row)
+            .background(RoundedRectangle(cornerRadius: Radius.panel).fill(Theme.panel))
+            .overlay(RoundedRectangle(cornerRadius: Radius.panel).strokeBorder(Theme.border, lineWidth: 1))
+            Text("It prints an sscope://pair… link. Paste it into Add machine… at the bottom of the sidebar.")
+                .font(Theme.font(.caption)).foregroundStyle(.secondary)
+            Text("Another Mac you use: turn on Settings → Share this Mac to Fleet there.")
+                .font(Theme.font(.caption)).foregroundStyle(.tertiary)
+            Link("Fleet manual: GPU boxes, cloud servers over Tailscale, troubleshooting",
+                 destination: Self.manualURL)
+                .font(Theme.font(.caption))
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity).padding(.horizontal, Space.page).padding(.bottom, Space.page)
+    }
+
+    static let installCommand =
+        "curl -fsSL https://raw.githubusercontent.com/kennss/SiliconScope/main/scripts/install-agent.sh | sh"
+    static let manualURL = URL(string: "https://github.com/kennss/SiliconScope/blob/main/docs/fleet.md")!
 }
 
 private struct FleetTile: View {
@@ -99,6 +133,18 @@ private struct FleetTile: View {
                     let loaded = o.loaded.first?.name
                     Text(loaded.map { "● \($0)" } ?? "\(o.models.count) model(s)")
                         .font(Theme.font(.caption)).foregroundStyle(loaded != nil ? .green : .secondary).lineLimit(1)
+                }
+                // On a box that runs services, the containers are its state: how many, and whether
+                // Docker has had to bring any back. Amber only for that — it exited on its own.
+                if let cs = m.containers, !cs.isEmpty {
+                    let restarted = cs.filter(\.hasRestarted).count
+                    HStack(spacing: 0) {
+                        Text("\(cs.count) container\(cs.count == 1 ? "" : "s")").foregroundStyle(.secondary)
+                        if restarted > 0 {
+                            Text(" · \(restarted) restarted").foregroundStyle(Palette.State.warn.color)
+                        }
+                    }
+                    .font(Theme.font(.caption)).lineLimit(1)
                 }
                 // The decode rate is what "how is this box performing" actually means for an LLM
                 // host, so it belongs on the tile rather than one level down. Dimmed once it stops
