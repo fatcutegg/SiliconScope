@@ -1,7 +1,7 @@
 //
 //  File:      Theme.swift
 //  Created:   2026-06-08
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Shared visual language and reusable UI atoms (Card, Bar, KV, Sparkline,
 //             PopoverButtonStyle), plus the Layout dimension tokens.
@@ -614,8 +614,6 @@ enum Layout {
         static var sparklineDropdown: CGFloat { UIScale.scaled(32) }
         /// Trace inside a compact list row in the combined popover.
         static var sparklineListRow: CGFloat { UIScale.scaled(15) }
-        /// Fleet dual-series chart.
-        static var fleetChart: CGFloat { UIScale.scaled(84) }
     }
 
     /// Status dots and legend swatches.

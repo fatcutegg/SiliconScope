@@ -328,14 +328,44 @@ public struct FleetGPU: Codable, Sendable, Equatable, Identifiable {
     @DefaultEmpty public var processes: [FleetGPUProc]
     public let freqMHz: Double?         // GPU clock; nil when the agent doesn't report it
 
+    // NVIDIA extended fields (Linux/Windows agent 1.3+). Each is nil when the card or driver doesn't
+    // report it — an older agent sends none of them, and a consumer card has no memory temperature.
+    public let memUtilPercent: Double?  // memory controller busy %: the bandwidth-bound signal
+    public let smClockMHz: Double?
+    public let smClockMaxMHz: Double?
+    public let memClockMHz: Double?
+    public let memClockMaxMHz: Double?
+    public let pstate: String?          // "P0" … "P12"
+    public let fanPercent: Double?
+    public let encoderPercent: Double?  // NVENC
+    public let decoderPercent: Double?  // NVDEC
+    /// Why the clocks are held down right now, as the agent names it ("power cap", "thermal
+    /// (hardware)" …). nil = the card doesn't say; [] = nothing is holding them down.
+    public let throttleReasons: [String]?
+
     public init(index: Int, name: String, driver: String, vramTotalBytes: Int64, vramUsedBytes: Int64,
                 utilizationPercent: Double, temperatureC: Double, powerDrawW: Double, powerLimitW: Double,
-                processes: [FleetGPUProc], freqMHz: Double? = nil) {
+                processes: [FleetGPUProc], freqMHz: Double? = nil,
+                memUtilPercent: Double? = nil, smClockMHz: Double? = nil, smClockMaxMHz: Double? = nil,
+                memClockMHz: Double? = nil, memClockMaxMHz: Double? = nil, pstate: String? = nil,
+                fanPercent: Double? = nil, encoderPercent: Double? = nil, decoderPercent: Double? = nil,
+                throttleReasons: [String]? = nil) {
         self.index = index; self.name = name; self.driver = driver
         self.vramTotalBytes = vramTotalBytes; self.vramUsedBytes = vramUsedBytes
         self.utilizationPercent = utilizationPercent; self.temperatureC = temperatureC
         self.powerDrawW = powerDrawW; self.powerLimitW = powerLimitW
         self.processes = processes; self.freqMHz = freqMHz
+        self.memUtilPercent = memUtilPercent; self.smClockMHz = smClockMHz; self.smClockMaxMHz = smClockMaxMHz
+        self.memClockMHz = memClockMHz; self.memClockMaxMHz = memClockMaxMHz; self.pstate = pstate
+        self.fanPercent = fanPercent; self.encoderPercent = encoderPercent; self.decoderPercent = decoderPercent
+        self.throttleReasons = throttleReasons
+    }
+
+    /// Whether the agent sent any of the extended fields — an older agent sends none, and then the
+    /// detail card is left out rather than shown empty.
+    public var hasExtendedDetail: Bool {
+        memUtilPercent != nil || smClockMHz != nil || memClockMHz != nil || pstate != nil
+            || fanPercent != nil || encoderPercent != nil || decoderPercent != nil || throttleReasons != nil
     }
 
     /// VRAM fraction used (0…1), for a bar.

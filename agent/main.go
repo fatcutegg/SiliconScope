@@ -1,7 +1,7 @@
 //
 //  File:      main.go
 //  Created:   2026-07-21
-//  Updated:   2026-09-24
+//  Updated:   2026-09-29
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  SiliconScope fleet agent (v0.1, Linux). Samples CPU / memory / NVIDIA GPU /
 //             Ollama and prints ONE MachineMetrics JSON to stdout. This is the source-agnostic
@@ -32,7 +32,7 @@ import (
 	"github.com/grandcat/zeroconf"
 )
 
-const agentVersion = "1.2.0"
+const agentVersion = "1.3.0"
 
 // MachineMetrics is the wire schema (source-agnostic): Linux-NVML and Mac-headless both fill it.
 type MachineMetrics struct {
@@ -81,6 +81,19 @@ type GPU struct {
 	PowerDrawW         float64   `json:"powerDrawW"`
 	PowerLimitW        float64   `json:"powerLimitW"`
 	Processes          []GPUProc `json:"processes"`
+
+	// Extended fields (gpu_extended.go). Omitted when the driver doesn't report them — never 0.
+	MemUtilPercent *float64 `json:"memUtilPercent,omitempty"` // memory controller busy: the bandwidth signal
+	SMClockMHz     *float64 `json:"smClockMHz,omitempty"`
+	SMClockMaxMHz  *float64 `json:"smClockMaxMHz,omitempty"`
+	MemClockMHz    *float64 `json:"memClockMHz,omitempty"`
+	MemClockMaxMHz *float64 `json:"memClockMaxMHz,omitempty"`
+	PState         *string  `json:"pstate,omitempty"`
+	FanPercent     *float64 `json:"fanPercent,omitempty"`
+	EncoderPercent *float64 `json:"encoderPercent,omitempty"` // NVENC
+	DecoderPercent *float64 `json:"decoderPercent,omitempty"` // NVDEC
+	// Why the clocks are held down right now. nil = the card doesn't say; [] = nothing is.
+	ThrottleReasons *[]string `json:"throttleReasons,omitempty"`
 }
 
 // Disk is one mounted local filesystem's capacity. The viewer derives used as total - free, so no
@@ -245,10 +258,22 @@ func portFromAddr(addr string) int {
 
 // MARK: - GPU (nvidia-smi)
 
+// baseGPUQuery is the nine fields every supported driver answers; readGPUs never gives them up.
+const baseGPUQuery = "index,name,driver_version,memory.total,memory.used,utilization.gpu,temperature.gpu,power.draw,power.limit"
+
 func readGPUs() []GPU {
-	out, err := exec.Command("nvidia-smi",
-		"--query-gpu=index,name,driver_version,memory.total,memory.used,utilization.gpu,temperature.gpu,power.draw,power.limit",
-		"--format=csv,noheader,nounits").Output()
+	extra := extendedGPUQuery()
+	query := baseGPUQuery
+	for _, f := range extra {
+		query += "," + f.name
+	}
+	out, err := exec.Command("nvidia-smi", "--query-gpu="+query, "--format=csv,noheader,nounits").Output()
+	if err != nil && len(extra) > 0 {
+		// The extras cost the whole query on a driver that rejects one of them. Keep the GPU.
+		disableExtendedGPUQuery()
+		extra = nil
+		out, err = exec.Command("nvidia-smi", "--query-gpu="+baseGPUQuery, "--format=csv,noheader,nounits").Output()
+	}
 	if err != nil {
 		// No NVIDIA GPU / driver — a Raspberry Pi, CPU-only server or VM lands here. Return an
 		// EMPTY slice, never nil: encoding/json marshals a nil slice as `null`, which broke the
@@ -273,6 +298,9 @@ func readGPUs() []GPU {
 			PowerDrawW:         atof(f[7]),
 			PowerLimitW:        atof(f[8]),
 			Processes:          []GPUProc{},
+		}
+		if len(f) >= 9+len(extra) {
+			applyExtended(&g, extra, f[9:])
 		}
 		gpus = append(gpus, g)
 	}
