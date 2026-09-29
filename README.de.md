@@ -59,13 +59,12 @@ musst du nicht eintragen.
 
 ![Die Fleet-Übersicht — alle Rechner auf einem Bildschirm](docs/img/fleet-overview.png)
 
-*Drei Rechner auf einen Blick. Jede Kachel zeigt **GPU + VRAM** und **CPU + RAM** auf jeweils
+*Vier Rechner auf einen Blick: dieser Mac, ein Rechner mit RTX 3090 bei **97 %** und **335 W**, ein
+Synology-NAS und ein Cloud-Droplet. Jede Kachel zeigt **GPU + VRAM** und **CPU + RAM** auf jeweils
 einer gemeinsamen Achse, auf Apple Silicon zusätzlich **ANE + Speicherbandbreite**. Jedes
-Metrik-Kürzel ist in der Farbe seiner Linie eingefärbt, eine Legende ist daher überflüssig. In der
-untersten Zeile steht die **von der Runtime gemessene Generierungsrate** und wie lange die Messung
-zurückliegt: Der Ubuntu-Rechner kam auf **262 tok/s**, beide Macs auf **28 tok/s**. Beschreibt
-ein Wert nicht mehr den aktuellen Zustand, wird er blasser dargestellt. This Mac ist immer die
-erste Kachel.*
+Metrik-Kürzel ist in der Farbe seiner Linie eingefärbt, eine Legende ist daher überflüssig. Unten
+steht, was auf dem Rechner läuft: auf der GPU-Kiste **2 Modelle** und **3 Container, davon 1 neu
+gestartet** (orange), auf dem Droplet **8 Container**. Dieser Mac ist immer die erste Kachel.*
 
 - **Ein entfernter Mac erscheint in genau demselben Dashboard wie der lokale**: E-/P-Kerne, GPU,
   **ANE**, Media, Speicherbandbreite, Leistungsaufnahme, Lüfter. Meines Wissens zeigt kein anderes
@@ -81,13 +80,21 @@ erste Kachel.*
 Speicherdruck 19 %). Die Sensoren melden korrekt **fanless**, statt einen Lüfterwert zu erfinden.
 Karten, die ein Agent über das Netzwerk nicht füllen kann, fallen weg; vorgetäuscht wird nichts.*
 
-![Eine Linux-GPU-Kiste mit VRAM-Haltern und Ollama-Modellen](docs/img/fleet-linux.png)
+![Eine Linux-GPU-Kiste: warum die Karte so läuft, wie sie läuft, und was darauf läuft](docs/img/fleet-linux.png)
 
-*Dieselbe App, eine andere Rechnerklasse: ein Rechner mit RTX 3090 im Leerlauf. Zu sehen sind
-**34 / 390 W** im Verhältnis zum Limit der Karte, **0,5 / 24 GB VRAM** und welcher Prozess ihn belegt
-(das Python von ComfyUI mit **0,2 GB**), die Kapazität beider Laufwerke (seit 4.4) und die
-Ollama-Modelle auf der Platte, grau dargestellt, weil keines geladen ist. E-Kerne und ANE fehlen,
-denn der Rechner hat beides nicht.*
+*Dieselbe App, eine andere Rechnerklasse: eine RTX 3090 bei **305 / 390 W**, und warum sie so läuft:
+Speicherbandbreite zu **43 % ausgelastet**, Kerntakt **1920 von 2130 MHz** in P2, nichts bremst den
+Takt. Wer den VRAM belegt, steht mit Skriptnamen da – `whisper-bench` **5,2 GB**, ComfyUI **0,2 GB** –,
+daneben die ComfyUI-Warteschlange, die Ollama-Modelle auf der Platte und die Container. Einer davon
+zeigt „Up 3 minutes“ und wurde in Wahrheit **485-mal neu gestartet**. E-Kerne und ANE fehlen, weil
+dieser Rechner beides nicht hat.*
+
+![Ein Cloud-Server ohne GPU, über Tailscale erreicht](docs/img/fleet-vps.png)
+
+*Ein Cloud-Droplet mit 2 vCPUs, über Tailscale erreicht. Ohne GPU beginnt die Seite mit dem, was
+darauf läuft: acht Container, gelesen über einen schreibgeschützten Docker-Proxy, damit der Agent nie
+root-Rechte hat. Darunter CPU, Speicher und Platten. Wie man das einrichtet, steht im
+[Fleet-Handbuch](docs/fleet.md#a-cloud-server-vps) (Englisch).*
 
 Jede Verbindung ist **TLS-verschlüsselt und per Token authentifiziert**. Beim ersten
 Verbindungsaufbau pinnt der Viewer das Zertifikat des Agents (TOFU). Ein Agent mit neuem Schlüssel

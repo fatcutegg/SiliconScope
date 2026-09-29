@@ -56,11 +56,11 @@ Machines on your LAN are discovered automatically (mDNS) — no IP configuration
 
 ![The Fleet overview — every machine on one screen](docs/img/fleet-overview.png)
 
-*Three machines at a glance. Each tile pairs **GPU + VRAM** and **CPU + RAM** on one axis,
-plus **ANE + memory bandwidth** on Apple Silicon — the tinted metric word matches its line, so
-no legend is needed. The bottom line of a tile is the **decode rate its runtime measured**,
-with how long ago: the Ubuntu box reached **262 tok/s**, both Macs **28 tok/s**. A rate dims
-once it stops describing the present. This Mac is always the first tile.*
+*Four machines at a glance: this Mac, an RTX 3090 box at **97 %** and **335 W**, a Synology NAS and a
+cloud droplet. Each tile pairs **GPU + VRAM** and **CPU + RAM** on one axis, plus **ANE + memory
+bandwidth** on Apple Silicon — the tinted metric word matches its line, so no legend is needed. A
+tile ends with what the box runs: the GPU box has **2 models** and **3 containers, 1 restarted** (in
+amber), the droplet **8 containers**. This Mac is always the first tile.*
 
 - **A remote Mac renders in the exact dashboard the local one uses** — E/P cores, GPU,
   **ANE**, Media, memory bandwidth, power, fans. As far as I know, no other tool shows a
@@ -75,12 +75,19 @@ once it stops describing the present. This Mac is always the first tile.*
 split (**wired 1.0 / active 2.7 / compressed 0.5 GB**, pressure 19%) — and Sensors correctly reporting
 **fanless** instead of inventing a fan reading. Cards a wire agent can't fill are omitted, not faked.*
 
-![A Linux GPU box with VRAM holders and Ollama models](docs/img/fleet-linux.png)
+![A Linux GPU box: why the card runs as it does, and what runs on it](docs/img/fleet-linux.png)
 
-*The same app, a different machine class. An idle RTX 3090 box: **34 / 390 W** against the card's limit,
-**0.5 / 24 GB VRAM** and which process holds it (ComfyUI's Python, **0.2 GB**), both drives' capacity
-(new in 4.4), and the Ollama models on disk — grey because none is loaded. No E-cores, no ANE —
-because it has neither.*
+*The same app, a different machine class. An RTX 3090 at **305 / 390 W**, and why it runs as it does:
+memory bandwidth **43 % busy**, core clock **1920 of 2130 MHz** at P2, nothing holding the clocks
+back. Who holds the VRAM is named by script — `whisper-bench` **5.2 GB**, ComfyUI **0.2 GB** — beside
+the ComfyUI queue, the Ollama models on disk, and the containers, where one that reads "Up 3
+minutes" has in fact **restarted 485 times**. No E-cores, no ANE — because it has neither.*
+
+![A cloud server without a GPU, reached over Tailscale](docs/img/fleet-vps.png)
+
+*A 2-vCPU cloud droplet, reached over Tailscale. With no GPU, the page starts with what it runs —
+eight containers, read through a read-only Docker proxy so the agent never holds root — then CPU,
+memory and disks. Setting one up: the [Fleet manual](docs/fleet.md#a-cloud-server-vps).*
 
 Every connection is **TLS-encrypted and token-authenticated**, and the viewer pins the agent's
 certificate the first time it connects, so a re-keyed or spoofed agent is refused rather than

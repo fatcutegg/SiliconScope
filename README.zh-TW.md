@@ -50,7 +50,7 @@
 
 ![Fleet 總覽：所有機器都在同一個畫面](docs/img/fleet-overview.png)
 
-*三台機器一覽無遺。每張圖磚都把 **GPU + VRAM** 和 **CPU + RAM** 畫在同一個座標軸上，Apple Silicon 機器另外加上 **ANE + 記憶體頻寬**。指標名稱的顏色和它的曲線相同，所以不需要圖例。圖磚最下面一行是**執行環境（runtime）實測的解碼速度**，以及是多久以前量的：Ubuntu 主機跑到 **262 tok/s**，兩台 Mac 都是 **28 tok/s**。數值一旦不再反映當下就會變暗。This Mac 永遠排在第一張。*
+*四台機器一覽無遺：這台 Mac、一台跑在 **97 %**、**335 W** 的 RTX 3090 主機、一台 Synology NAS 和一台雲端 Droplet。每張圖磚都把 **GPU + VRAM** 和 **CPU + RAM** 畫在同一個座標軸上，Apple Silicon 機器另外加上 **ANE + 記憶體頻寬**。指標名稱的顏色和它的曲線相同，所以不需要圖例。圖磚最下面是這台機器在跑什麼：GPU 主機有 **2 個模型**和 **3 個容器，其中 1 個重啟過**（橘色），Droplet 有 **8 個容器**。這台 Mac 永遠是第一張圖磚。*
 
 - **遠端 Mac 使用和本機完全相同的儀表板**：E/P 核心、GPU、**ANE**、Media、記憶體頻寬、功耗、風扇。就我所知，目前沒有其他工具能顯示**遠端 Mac 的 Neural Engine**。
 - **Linux/NVIDIA 主機則以 GPU 為主**：使用率、VRAM、功耗與顯示卡上限的對照、溫度、哪些程序佔用 VRAM，以及已載入的 **Ollama** 模型。它不會硬把 3090 當成有 E 核心。
@@ -59,9 +59,13 @@
 
 *從另一台 Mac 看一台不接螢幕的 M1 Air：**4E+4P** 核心、GPU/Media/**ANE 估計值**，以及實際的記憶體組成（**wired 1.0 / active 2.7 / compressed 0.5 GB**，壓力 19%）。感測器也如實回報 **fanless**，不會憑空編出風扇轉速。透過連線協定取不到資料的卡片會直接省略，不會造假。*
 
-![Linux GPU 主機，顯示佔用 VRAM 的程序與 Ollama 模型](docs/img/fleet-linux.png)
+![Linux GPU 主機：顯示卡為什麼這樣跑，上面又跑著什麼](docs/img/fleet-linux.png)
 
-*同一個 App，換一種機器。一台閒置的 RTX 3090 主機：功耗 **34 / 390 W**（對照顯示卡上限）、**0.5 / 24 GB VRAM** 與佔用它的程序（ComfyUI 的 Python，**0.2 GB**）、兩顆硬碟的容量（4.4 新增），還有磁碟上的 Ollama 模型，灰色代表都沒有載入。沒有 E 核心，也沒有 ANE，因為這台機器本來就沒有。*
+*同一個 App，換一種機器。一張 RTX 3090 跑在 **305 / 390 W**，也看得到它為什麼這樣跑：記憶體頻寬 **43 % 忙碌**，核心時脈 **2130 MHz 中的 1920 MHz**（P2），沒有任何因素壓住時脈。佔用 VRAM 的程序以腳本名稱顯示：`whisper-bench` **5.2 GB**，ComfyUI **0.2 GB**。旁邊是 ComfyUI 佇列、磁碟上的 Ollama 模型和容器，其中一個顯示「Up 3 minutes」的容器其實已經**重啟了 485 次**。沒有 E 核心，也沒有 ANE，因為這台機器本來就沒有。*
+
+![透過 Tailscale 連線的無 GPU 雲端伺服器](docs/img/fleet-vps.png)
+
+*一台透過 Tailscale 連線的 2 vCPU 雲端 Droplet。沒有 GPU，所以畫面從它在跑什麼開始：8 個容器，經由唯讀 Docker 代理讀取，agent 從不持有 root 權限。下面是 CPU、記憶體和磁碟。設定方法見 [Fleet 使用手冊](docs/fleet.md#a-cloud-server-vps)（英文）。*
 
 每一條連線都經過 **TLS 加密與權杖（token）驗證**。檢視端第一次連線時會釘選 agent 的憑證（TOFU），之後如果 agent 換了金鑰或遭人冒充，檢視端會直接拒絕連線，不會默默信任。
 
