@@ -48,17 +48,53 @@ public struct MachineMetrics: Codable, Sendable, Identifiable, Equatable {
     public let aiRuntime: FleetAIRuntime?
     public let processes: [FleetProcess]?
     public let battery: FleetBattery?
+    // What runs on a Linux GPU box besides the model server (agent 1.3+). nil = not reported —
+    // Docker unreadable, or an older agent — which is not the same as [] (Docker, and nothing on it).
+    public let containers: [FleetContainer]?
+    public let comfyui: FleetComfyUI?
 
     public init(machineId: String, hostname: String, os: String, kind: String, agentVersion: String,
                 ts: Int64, cpu: FleetCPU, memory: FleetMemory, gpus: [FleetGPU],
                 llm: FleetLLM? = nil, apple: FleetApple? = nil, disks: [FleetDisk]? = nil,
                 thermal: FleetThermal? = nil, io: FleetIO? = nil, aiRuntime: FleetAIRuntime? = nil,
-                processes: [FleetProcess]? = nil, battery: FleetBattery? = nil) {
+                processes: [FleetProcess]? = nil, battery: FleetBattery? = nil,
+                containers: [FleetContainer]? = nil, comfyui: FleetComfyUI? = nil) {
         self.machineId = machineId; self.hostname = hostname; self.os = os; self.kind = kind
         self.agentVersion = agentVersion; self.ts = ts; self.cpu = cpu; self.memory = memory
         self.gpus = gpus; self.llm = llm; self.apple = apple; self.disks = disks
         self.thermal = thermal; self.io = io; self.aiRuntime = aiRuntime
         self.processes = processes; self.battery = battery
+        self.containers = containers; self.comfyui = comfyui
+    }
+}
+
+/// One running Docker container. `restartCount` is what makes a crash loop visible: a container
+/// Docker keeps bringing back still reads "running".
+public struct FleetContainer: Codable, Sendable, Equatable {
+    public let name: String
+    public let image: String
+    public let state: String
+    public let status: String
+    public let restartCount: Int?
+
+    public init(name: String, image: String, state: String, status: String, restartCount: Int? = nil) {
+        self.name = name; self.image = image; self.state = state; self.status = status
+        self.restartCount = restartCount
+    }
+
+    /// Docker restarted it on its own at least once: it exited and was brought back.
+    public var hasRestarted: Bool { (restartCount ?? 0) > 0 }
+}
+
+/// A ComfyUI server's queue, from a ComfyUI the agent saw running on the host.
+public struct FleetComfyUI: Codable, Sendable, Equatable {
+    public let version: String?
+    public let port: Int
+    public let running: Int
+    public let pending: Int
+
+    public init(version: String?, port: Int, running: Int, pending: Int) {
+        self.version = version; self.port = port; self.running = running; self.pending = pending
     }
 }
 
@@ -308,9 +344,35 @@ public struct FleetGPUProc: Codable, Sendable, Equatable {
     public let pid: Int
     public let name: String
     public let vramBytes: Int64
+    /// The Docker container holding this VRAM; nil for the host (or an agent older than 1.3).
+    public let container: String?
+    /// The Python script it runs, so two jobs in one environment can be told apart.
+    public let script: String?
 
-    public init(pid: Int, name: String, vramBytes: Int64) {
-        self.pid = pid; self.name = name; self.vramBytes = vramBytes
+    public init(pid: Int, name: String, vramBytes: Int64, container: String? = nil, script: String? = nil) {
+        self.pid = pid; self.name = name; self.vramBytes = vramBytes; self.container = container
+        self.script = script
+    }
+
+    /// A short name that tells GPU processes apart. Most are Python in a virtual environment, so the
+    /// tail of the path is always `…/bin/python` and truncating it leaves "…python" for all of them.
+    /// The environment's project is the part that differs: `ComfyUI/venv/bin/python` → "ComfyUI",
+    /// `whisper-bench/bin/python` → "whisper-bench". Anything else is its file name.
+    public var displayName: String { Self.displayName(forPath: name) }
+
+    static let genericEnvNames: Set<String> = ["venv", ".venv", "env", ".env", "virtualenv"]
+
+    static func displayName(forPath path: String) -> String {
+        let parts = path.split(separator: "/").map(String.init)
+        guard let last = parts.last else { return path }
+        // /usr/bin/python3 or /usr/local/bin/python3 is the system's, not an environment.
+        if last.hasPrefix("python"), parts.count >= 3, parts[parts.count - 2] == "bin",
+           !["usr", "local"].contains(parts[parts.count - 3]) {
+            let env = parts[parts.count - 3]
+            if genericEnvNames.contains(env), parts.count >= 4 { return parts[parts.count - 4] }
+            return env
+        }
+        return last
     }
 }
 

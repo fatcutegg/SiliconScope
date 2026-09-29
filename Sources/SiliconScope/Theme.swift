@@ -584,8 +584,6 @@ enum Layout {
         /// Sensors dropdown: temperature value and fan RPM.
         static var sensorValue: CGFloat { UIScale.scaled(44) }
         static var fanValue: CGFloat { UIScale.scaled(70) }
-        /// Linux fleet view metric label.
-        static var linuxLabel: CGFloat { UIScale.scaled(64) }
         /// Inline meter track beside a sensor / fan reading in the dropdowns.
         static var sensorBar: CGFloat { UIScale.scaled(60) }
         /// Port field in the Add Machine sheet.

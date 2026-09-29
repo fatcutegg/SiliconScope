@@ -47,6 +47,28 @@ type MachineMetrics struct {
 	GPUs         []GPU  `json:"gpus"`
 	Disks        []Disk `json:"disks"`
 	LLM          *LLM   `json:"llm,omitempty"`
+	// Running Docker containers. Absent = Docker isn't readable here; [] = it is, and runs nothing.
+	Containers *[]Container `json:"containers,omitempty"`
+	// A ComfyUI server seen on the host, and its queue. Absent when none is running.
+	ComfyUI *ComfyUI `json:"comfyui,omitempty"`
+}
+
+// Container is one running Docker container. RestartCount is what makes a crash loop visible:
+// a container Docker keeps restarting still reads "running".
+type Container struct {
+	Name         string `json:"name"`
+	Image        string `json:"image"`
+	State        string `json:"state"`
+	Status       string `json:"status"`
+	RestartCount *int   `json:"restartCount,omitempty"`
+}
+
+// ComfyUI is a ComfyUI server's queue: prompts executing and waiting.
+type ComfyUI struct {
+	Version string `json:"version,omitempty"`
+	Port    int    `json:"port"`
+	Running int    `json:"running"`
+	Pending int    `json:"pending"`
 }
 
 type CPU struct {
@@ -68,6 +90,10 @@ type GPUProc struct {
 	PID       int    `json:"pid"`
 	Name      string `json:"name"`
 	VRAMBytes int64  `json:"vramBytes"`
+	// The Docker container holding this VRAM, when it runs in one. Empty for the host.
+	Container string `json:"container,omitempty"`
+	// The Python script it runs (e.g. "halluc_bench.py"), so two jobs in one environment differ.
+	Script string `json:"script,omitempty"`
 }
 
 type GPU struct {
@@ -167,9 +193,11 @@ func sample() MachineMetrics {
 		TS:           time.Now().UnixMilli(),
 		CPU:          readCPU(),
 		Memory:       readMemory(),
+		Containers:   readContainers(), // before GPUs: GPU processes are named after their containers
 		GPUs:         readGPUs(),
 		Disks:        readDisks(),
 		LLM:          readLLM(),
+		ComfyUI:      readComfyUI(),
 	}
 }
 
@@ -327,7 +355,10 @@ func readGPUProcs() []GPUProc {
 		if len(f) < 3 {
 			continue
 		}
-		procs = append(procs, GPUProc{PID: atoi(f[0]), Name: f[1], VRAMBytes: mibToBytes(f[2])})
+		pid := atoi(f[0])
+		path, script := describeProc(pid, f[1])
+		procs = append(procs, GPUProc{PID: pid, Name: path, VRAMBytes: mibToBytes(f[2]),
+			Container: containerOf(pid), Script: script})
 	}
 	return procs
 }

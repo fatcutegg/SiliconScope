@@ -6,7 +6,8 @@
 //  Overview:  Detail dashboard for a remote LINUX / NVIDIA server — GPU-centric, distinct from the
 //             Mac layout. The header carries the machine's identity (OS, agent, cores, RAM, GPU,
 //             VRAM). Then three rows on This Mac's grid constants, grouped by subject: the GPU
-//             (util/VRAM chart | NVIDIA detail), what runs on it (compute processes | AI runtime),
+//             (util/VRAM chart | NVIDIA detail), what runs on it (compute processes | AI runtime
+//             with Ollama and ComfyUI | containers),
 //             and the host (CPU/RAM chart | storage). Three rows to This Mac's four, with lists
 //             scrolling inside their cards, so the page is never taller than This Mac's.
 //             Deliberately omits Apple-only concepts (ANE / E-P / Media).
@@ -51,9 +52,12 @@ struct LinuxServerView: View {
                         }
                         .frame(minHeight: Layout.Row.dense)
 
+                        // What runs on the card: processes, the AI runtime, and the containers around
+                        // them — three to the row, so a new subject costs no height.
                         HStack(alignment: .top, spacing: Space.row) {
                             computeProcesses(g)
                             runtimeCard(m)
+                            if let containers = m.containers { containersCard(containers) }
                         }
                         .frame(height: Layout.Row.scrolling)
                     }
@@ -214,15 +218,23 @@ struct LinuxServerView: View {
                 Text("nothing is using the GPU").font(Theme.font(.caption)).foregroundStyle(.secondary)
             }
             ScrollView {
-            ForEach(g.processes, id: \.pid) { p in
-                HStack {
-                    Text("\(p.pid)").font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary)
-                        .frame(width: Layout.Column.linuxLabel, alignment: .leading)
-                    Text(p.name).font(.system(.caption2, design: .monospaced)).lineLimit(1)
-                    Spacer()
-                    Text(gb(p.vramBytes)).font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: Space.tight) {
+                    ForEach(g.processes, id: \.pid) { p in
+                        // Name first and full width — it is what tells the rows apart; the PID and
+                        // container go underneath, where a narrow card can't squeeze the name.
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack {
+                                Text(p.displayName).font(.system(.caption, design: .monospaced)).lineLimit(1)
+                                    .help(p.name)
+                                Spacer(minLength: Space.row)
+                                Text(gb(p.vramBytes)).font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(["pid \(p.pid)", p.script, p.container].compactMap { $0 }.joined(separator: " · "))
+                                .font(Theme.font(.caption)).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
                 }
-            }
             }
         }
     }
@@ -232,12 +244,57 @@ struct LinuxServerView: View {
     private func runtimeCard(_ m: MachineMetrics) -> some View {
         card("AI RUNTIME") {
             if let r = m.llm?.rate { tokenRateRows(r) }
-            if let o = m.llm?.ollama, o.running {
+            if let c = m.comfyui {
                 if m.llm?.rate != nil { Divider().overlay(Theme.border) }
+                comfyUIRows(c)
+            }
+            if let o = m.llm?.ollama, o.running {
+                if m.llm?.rate != nil || m.comfyui != nil { Divider().overlay(Theme.border) }
                 ScrollView { ollamaRows(o) }
             }
-            if m.llm?.rate == nil && m.llm?.ollama?.running != true {
+            if m.llm?.rate == nil && m.llm?.ollama?.running != true && m.comfyui == nil {
                 Text("no runtime reported").font(Theme.font(.caption)).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// ComfyUI's queue: prompts executing now and waiting behind them.
+    private func comfyUIRows(_ c: FleetComfyUI) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Space.row) {
+            Text("ComfyUI").font(Theme.font(.caption)).foregroundStyle(.secondary)
+            if let v = c.version { Text(v).font(Theme.font(.caption)).foregroundStyle(.tertiary) }
+            Spacer()
+            Text(c.running + c.pending == 0 ? "idle" : "\(c.running) running · \(c.pending) queued")
+                .font(.system(.caption, design: .monospaced))
+        }
+    }
+
+    /// Running containers. A restart count is shown only when Docker has had to bring one back,
+    /// and in amber: the container exited on its own, which "running" alone would never tell.
+    private func containersCard(_ containers: [FleetContainer]) -> some View {
+        card("CONTAINERS") {
+            if containers.isEmpty {
+                Text("none running").font(Theme.font(.caption)).foregroundStyle(.secondary)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: Space.tight) {
+                    ForEach(containers, id: \.name) { c in
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(c.name).font(.system(.caption, design: .monospaced)).lineLimit(1)
+                            HStack(spacing: Space.row) {
+                                // The status gives way; the restart count never wraps or truncates —
+                                // it is the reading that matters on this row.
+                                Text(c.status).font(Theme.font(.caption)).foregroundStyle(.secondary).lineLimit(1)
+                                Spacer(minLength: 0)
+                                if c.hasRestarted, let n = c.restartCount {
+                                    Text("restarted \(n)×").font(Theme.font(.caption))
+                                        .foregroundStyle(Palette.State.warn.color)
+                                        .fixedSize().layoutPriority(1)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
