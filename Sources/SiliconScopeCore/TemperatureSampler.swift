@@ -1,7 +1,7 @@
 //
 //  File:      TemperatureSampler.swift
 //  Created:   2026-06-08
-//  Updated:   2026-09-29
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Reads categorized temperatures sudolessly. Prefers the rich Apple Silicon
 //             HID sensor set (IOHIDEventSystem, via HIDSensorReader) — the source iStat
@@ -168,21 +168,43 @@ public final class TemperatureSampler {
     /// A readable name for the Intel keys whose meaning is conventional across Intel Macs, so the
     /// panel says what a sensor measures rather than inventing an order ("CPU 3"). Anything else
     /// keeps its raw key: a name we cannot vouch for is worse than the key itself.
+    ///
+    /// "Conventional" is checked against acidanthera/VirtualSMC Docs/SMCSensorKeys.txt, which
+    /// collects each key's description from many Mac models. A key is named only when every
+    /// description there agrees on what it measures (#69). Left raw on purpose: Ts0S / Ts1S /
+    /// Ts1P / Th1H / Th2H / Tm0P, whose descriptions disagree between models, and TaLC / TaRC,
+    /// which the list doesn't have.
     static func intelName(for key: String) -> String? {
         let c = Array(key)
         guard c.count == 4 else { return nil }
         switch key {
         case "TC0P": return "CPU proximity"
-        case "TC0D", "TC0E", "TC0F": return "CPU die"
+        // Three readings of the one die, which a panel showing "CPU die" twice made look like a
+        // duplicate: the raw one, a filtered one, and one filtered then adjusted for fan control.
+        case "TC0D": return "CPU die"
+        case "TC0E": return "CPU die, filtered"
+        case "TC0F": return "CPU die, adjusted"
+        case "TCXC": return "CPU PECI"
+        case "TCMX": return "CPU PECI max"
+        case "TCSA": return "CPU system agent"
+        case "TCGC": return "CPU graphics core"
         case "TG0P": return "GPU proximity"
         case "TG0D": return "GPU die"
         case "TM0P": return "Memory proximity"
+        case "TW0P": return "Wi-Fi"
+        case "Ts0P": return "Palm rest"
         default: break
         }
         // TC1C … TC9C: one per CPU core.
         if c[0] == "T", c[1] == "C", c[3] == "C", let n = c[2].wholeNumberValue, n > 0 { return "CPU core \(n)" }
         // TB0T, TB1T, TB2T: one per battery cell pack.
         if c[0] == "T", c[1] == "B", c[3] == "T", let n = c[2].wholeNumberValue { return "Battery \(n + 1)" }
+        // TH0x = drive 0's hottest reading; TH0A–C / TH0a–c = its three sensors (cooked / raw).
+        // Other TH suffixes (P, O, F, R, V…) mean different things on different models.
+        if c[0] == "T", c[1] == "H", let n = c[2].wholeNumberValue {
+            if c[3] == "x" { return "Drive \(n + 1) max" }
+            if "ABCabc".contains(c[3]) { return "Drive \(n + 1) \(c[3].uppercased())" }
+        }
         return nil
     }
 

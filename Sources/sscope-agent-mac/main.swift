@@ -1,7 +1,7 @@
 //
 //  File:      main.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-29
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Headless SiliconScope fleet agent for a Mac (launchd / CLI). Samples this Mac's live
 //             metrics via Core's SystemSampler once a second, maps them to MachineMetrics, and serves
@@ -125,11 +125,13 @@ func primaryIPv4() -> String? {
 // MARK: - CLI flags
 
 let args = CommandLine.arguments
-var port = defaultPort
-if let i = args.firstIndex(of: "--serve"), i + 1 < args.count {
+// A `let`, so the server's background queue can read it: a mutable top-level global is main-actor
+// state, and Swift 6.1 refuses to read it off the main actor (#69).
+let port: UInt16 = {
+    guard let i = args.firstIndex(of: "--serve"), i + 1 < args.count else { return defaultPort }
     let raw = args[i + 1].hasPrefix(":") ? String(args[i + 1].dropFirst()) : args[i + 1]
-    if let p = UInt16(raw) { port = p }
-}
+    return UInt16(raw) ?? defaultPort
+}()
 
 if args.contains("--version") { print(agentVersion); exit(0) }
 if args.contains("--print-token") { print(readOrCreateToken()); exit(0) }
@@ -159,35 +161,51 @@ let osName = "macOS \(osv.majorVersion).\(osv.minorVersion).\(osv.patchVersion)"
 // machine is doing, never add to it (#60).
 let tokenRate = TokenRateWatcher()
 
-let sampler = SystemSampler()
-let topology = sampler.topology
-let engine = MetricsEngine(topology: topology)
+/// The sampler and the engine that tracks peaks across samples, and the one place a payload is
+/// built, so `--once` prints exactly what the server sends.
+///
+/// Confined, not locked: after `--once` (main thread, before any queue starts) only the sample
+/// queue touches it. That confinement is what `@unchecked Sendable` asserts. MetricsEngine is not
+/// Sendable, so as a bare top-level global it was main-actor state read from that queue, which
+/// Swift 6.2 lets through and 6.1 rejects (#69).
+final class SampleLoop: @unchecked Sendable {
+    let sampler = SystemSampler()
+    private let topology: CPUTopology?
+    private let engine: MetricsEngine
 
-/// The payload for one sample — the single place it is built, so `--once` prints exactly what the
-/// server sends. A closure rather than a function: top-level functions are main-actor isolated in
-/// Swift 6, and the sample loop calls this from its own queue, the way it always read `engine`.
-let metrics: (SystemSnapshot, Date, FleetTokenRate?) -> MachineMetrics = { snap, now, rate in
-    MachineMetrics.mac(
-        snapshot: snap, topology: topology, hostname: hostname, machineId: machineId,
-        osName: osName, agentVersion: agentVersion,
-        tsMillis: Int64(now.timeIntervalSince1970 * 1000), loadAvg1: loadAvg1(),
-        anePeakWatts: engine.anePeakWatts, mediaPeakGBs: engine.mediaPeakGBs,
-        bandwidthPeakGBs: engine.bandwidthPeakGBs,
-        gpuClockPeakMHz: engine.gpuClockPeakMHz,
-        tokenRate: rate
-    )
+    init() {
+        topology = sampler.topology
+        engine = MetricsEngine(topology: topology)
+    }
+
+    func sample() -> SystemSnapshot { sampler.sample(interval: 0.2) }
+
+    func ingest(_ snap: SystemSnapshot, dt: Double) { engine.ingest(snap, dt: dt) }
+
+    func payload(_ snap: SystemSnapshot, now: Date, rate: FleetTokenRate?) -> MachineMetrics {
+        MachineMetrics.mac(
+            snapshot: snap, topology: topology, hostname: hostname, machineId: machineId,
+            osName: osName, agentVersion: agentVersion,
+            tsMillis: Int64(now.timeIntervalSince1970 * 1000), loadAvg1: loadAvg1(),
+            anePeakWatts: engine.anePeakWatts, mediaPeakGBs: engine.mediaPeakGBs,
+            bandwidthPeakGBs: engine.bandwidthPeakGBs,
+            gpuClockPeakMHz: engine.gpuClockPeakMHz,
+            tokenRate: rate
+        )
+    }
 }
+let loop = SampleLoop()
 
 // One sample to stdout, then exit: what a user pastes into an issue from a machine we don't have.
 // CPU usage is a delta against the previous call, so the first sample is taken and discarded.
 if args.contains("--once") {
-    _ = sampler.sample(interval: 0.2)
+    _ = loop.sample()
     Thread.sleep(forTimeInterval: 1)
-    let snap = sampler.sample(interval: 0.2)
-    engine.ingest(snap, dt: 1)
+    let snap = loop.sample()
+    loop.ingest(snap, dt: 1)
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
-    if let data = try? encoder.encode(metrics(snap, Date(), nil)) {
+    if let data = try? encoder.encode(loop.payload(snap, now: Date(), rate: nil)) {
         FileHandle.standardOutput.write(data)
         print()
     }
@@ -217,14 +235,15 @@ let sampleQueue = DispatchQueue(label: "ai.calidalab.sscope-agent.sample")
 sampleQueue.async {
     var lastTick = Date()
     while true {
-        var snap = sampler.sample(interval: 0.2)
+        var snap = loop.sample()
         runtimeAPI.observe(snap.aiRuntime)
         snap.runtimeAPI = runtimeAPI.latest()
         let now = Date()
         let dt = now.timeIntervalSince(lastTick)
         lastTick = now
-        engine.ingest(snap, dt: dt)
-        let payload = metrics(snap, now, tokenRate.latest(llamaCppPort: snap.aiRuntime.llamaCppPort,
+        loop.ingest(snap, dt: dt)
+        let payload = loop.payload(snap, now: now,
+                                   rate: tokenRate.latest(llamaCppPort: snap.aiRuntime.llamaCppPort,
                                                           lmStudioRunning: snap.aiRuntime.isLMStudioRunning))
         if let d = try? JSONEncoder().encode(payload) { cache.set(d) }
         Thread.sleep(forTimeInterval: 0.8)   // total cadence ≈ 1 s

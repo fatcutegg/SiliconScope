@@ -1,7 +1,7 @@
 //
 //  File:      IntelFansAndSensorsTests.swift
 //  Created:   2026-09-29
-//  Updated:   2026-09-29
+//  Updated:   2026-09-30
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  #69: a two-fan Intel MacBook Pro read "fanless" with "no sensors available". Pins the
 //             three pieces of the fix — the Intel sp78 temperature type, Intel's key names, and the
@@ -55,6 +55,22 @@ final class IntelFansAndSensorsTests: XCTestCase {
         XCTAssertEqual(TemperatureSampler.intelName(for: "TB1T"), "Battery 2")
         XCTAssertNil(TemperatureSampler.intelName(for: "TA0P"), "unknown meaning keeps the raw key")
         XCTAssertNil(TemperatureSampler.intelName(for: "TC0C"), "core numbering starts at 1")
+    }
+
+    /// dewylouis's MacBookPro16,1 read "CPU die" twice (TC0E, TC0F) and left conventional keys raw.
+    func testIntelDieReadingsAreDistinctAndConventionalKeysAreNamed() {
+        let die = ["TC0D", "TC0E", "TC0F"].compactMap { TemperatureSampler.intelName(for: $0) }
+        XCTAssertEqual(Set(die).count, 3, "three readings of one die need three names")
+        XCTAssertEqual(TemperatureSampler.intelName(for: "TCSA"), "CPU system agent")
+        XCTAssertEqual(TemperatureSampler.intelName(for: "TW0P"), "Wi-Fi")
+        XCTAssertEqual(TemperatureSampler.intelName(for: "TH0x"), "Drive 1 max")
+        XCTAssertEqual(TemperatureSampler.intelName(for: "TH0A"), "Drive 1 A")
+        XCTAssertEqual(TemperatureSampler.intelName(for: "TH1b"), "Drive 2 B")
+        XCTAssertNil(TemperatureSampler.intelName(for: "TH0P"), "HDD proximity on some models, drive 0 on others")
+        // Keys whose documented meaning differs between models stay raw.
+        for key in ["Ts0S", "Ts1S", "Ts1P", "Th1H", "Th2H", "Tm0P", "TaLC", "TaRC"] {
+            XCTAssertNil(TemperatureSampler.intelName(for: key), key)
+        }
     }
 
     // MARK: - No fans vs no fan reading
