@@ -1,5 +1,62 @@
 # Changelog
 
+## v4.5.0 — 2026-09-30
+
+**Machines added by a Tailscale or VPN address now connect.** macOS's App
+Transport Security exempts only local addresses. For anything else — Tailscale's
+100.x included — it demanded system trust before SiliconScope's own check of the
+agent's certificate could run, and the agent's self-signed certificate can't pass
+it. Every such machine failed with "An SSL error has occurred" (-1200 / -9802).
+LAN machines were never affected. The connection still pins the agent's
+certificate on first use, as before.
+
+### Fleet
+
+- **An NVIDIA box answers the questions asked of Apple Silicon.** Besides
+  utilisation, VRAM, temperature and power, a Linux GPU box now reports
+  memory-controller utilisation (bandwidth-bound?), SM and memory clocks against
+  their maxima, the P-state, fan speed, NVENC / NVDEC, and **why the clocks are
+  held down**: power cap, thermal slowdown, power brake.
+- **What runs on it.** Docker containers with their restart counts — a container
+  that reads "running" but has restarted 400 times shows in amber. A ComfyUI
+  server's queue. Which process holds the VRAM, named by its script and
+  container rather than "python3".
+- **A cloud server without a GPU** shows its containers too (they were dropped
+  on a machine with no card), and a Fleet tile counts a box's containers.
+- **Docker without root.** The Linux agent reads `DOCKER_HOST`, so it can use a
+  read-only socket proxy instead of the Docker socket, whose group is root in
+  all but name. The installer takes `SSCOPE_USER` (runs the agent as its own
+  no-login user) and `SSCOPE_DOCKER_HOST`, and on a tailnet it prints a second
+  pairing link with the Tailscale address.
+- **An Intel Mac's fans and temperatures** show, and "fanless" appears only when
+  the Mac really has no fan. Intel sensors are named where their meaning is
+  documented the same on every model, so the CPU die's three readings no longer
+  look like duplicates. The Mac agent also builds with Swift 6.1 now.
+  ([#69](https://github.com/kennss/SiliconScope/issues/69), tested by @dewylouis)
+- **Synology and other older systemd** (DSM 7 runs 219): the installer creates
+  the agent's state directory itself, so the pairing token it prints is the one
+  the agent uses.
+- A loop-mounted file image is no longer listed as a disk.
+- **The empty Fleet page** shows the install command with a copy button, and
+  links to the new [Fleet manual](docs/fleet.md): headless Macs, GPU boxes, a
+  cloud server over Tailscale, changing a token, and troubleshooting by symptom.
+- Both agents are now **1.3.0**. Update them to get the new fields; an older agent
+  keeps working and simply sends less.
+
+### Local AI runtimes
+
+- **LM Studio reports only what it has loaded.** Its OpenAI-compatible model
+  list can include every downloaded model, and was being read as the loaded set.
+  (pointed out by @TianjinAI in [#66](https://github.com/kennss/SiliconScope/issues/66))
+
+### Docs
+
+- [Using SiliconScopeCore as a library](docs/library.md) — for linking the
+  measurement layer into your own tool.
+- Lockdown Mode and a block-all firewall keep a Mac out of Fleet, and how to let
+  it in. ([#63](https://github.com/kennss/SiliconScope/issues/63), worked out by
+  @progenitor-amborella)
+
 ## v4.4.0 — 2026-09-24
 
 **macOS 27 changed how Apple Silicon reports energy, and SiliconScope read it as
