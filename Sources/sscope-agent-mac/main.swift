@@ -23,7 +23,9 @@ import SiliconScopeCore
 // 1.2.0: thermal state, DVFS ceilings, disk + network throughput, AI runtimes and loaded model,
 // processes, battery, and the power basis for macOS 27 (#56, #65). A viewer shows a reduced remote
 // page for anything older, so this is the number to look for when a remote page looks thin.
-private let agentVersion = "1.2.0"
+// 1.3.0: fans on every architecture as their own field, Intel temperatures (sp78), and "fanless"
+// only when the SMC says so (#69); `--once` for diagnosis.
+private let agentVersion = "1.3.0"
 private let defaultPort: UInt16 = 7799
 
 /// What the local AI runtime's API last said, and which runtimes the sample loop last saw — shared
