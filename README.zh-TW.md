@@ -159,6 +159,12 @@ App 已使用 Developer ID 簽署並通過 **Apple 公證**，開啟時不會跳
 - **自動更新**：內建 Sparkle 更新程式，可從選單的「Check for Updates…」檢查更新
 - **不需要 `sudo`。**
 
+## 貢獻者
+
+**SiliconScope 能正確讀取的晶片，大多是這個專案從沒跑過的晶片。** 手上只有一台 M1 Max。M2 Max、M4 Max、M5 Max 和 Intel 的支援，靠的是有人在自己的機器上量得夠仔細，不必用猜的。也有人直接寫了 App 的一部分——名字、AI 工作負載分類器、Windows agent——還有人找出了看起來沒問題、其實是錯的數字。
+
+**👥 [每個人做了什麼](CONTRIBUTORS.md)**（英文）
+
 ## 相關專案
 
 **[Spectalo](https://spectalo.calidalab.ai/zh/)**：同樣出自 Calida Lab 的影片播放器，介面精美，AI 字幕與翻譯全在裝置端完成（Whisper + Apple Intelligence）。SiliconScope 就是在開發它的過程中誕生的。目前在 TestFlight 免費公開測試，理念也一樣：資料絕不離開你的裝置。

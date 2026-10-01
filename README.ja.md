@@ -158,6 +158,12 @@ Developer ID で署名し、**Apple の公証**も受けているので、Gateke
 - **自動アップデート**：Sparkle のアップデーターを内蔵。メニューの「Check for Updates…」から確認できる
 - **`sudo` は不要。**
 
+## コントリビューター
+
+**SiliconScope が正しく読めるチップの多くは、このプロジェクトで一度も動かしたことのないチップです。** 手元にあるのは M1 Max 1 台だけです。M2 Max、M4 Max、M5 Max、Intel への対応は、推測の余地がなくなるほど丁寧に自分のマシンで測ってくれた人たちのおかげです。名前、AI ワークロード分類器、Windows エージェントのように、アプリの一部をまるごと書いてくれた人も、正しそうに見えて実は間違っていた数値を見つけてくれた人もいます。
+
+**👥 [誰が何をしてくれたか](CONTRIBUTORS.md)**（英語）
+
 ## 関連プロジェクト
 
 **[Spectalo](https://spectalo.calidalab.ai/ja/)** は、オンデバイス AI による字幕・翻訳（Whisper + Apple Intelligence）を備えた、美しい動画プレーヤーです。同じ Calida Lab の製品で、SiliconScope はこのアプリの開発から生まれました。TestFlight で無料のオープンベータを実施中です。考え方も同じで、データがデバイスの外に出ることはありません。

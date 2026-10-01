@@ -243,6 +243,17 @@ Die Messschicht ist eine Swift-Bibliothek, `SiliconScopeCore`, die du in eigene 
 - **Automatische Updates**: eingebauter Sparkle-Updater, „Check for Updates…" im Menü
 - **Kein `sudo` nötig.**
 
+## Mitwirkende
+
+**Die meisten Chips, die SiliconScope korrekt ausliest, sind Chips, auf denen es nie gelaufen ist.**
+Dieses Projekt besitzt einen einzigen M1 Max. Dass M2 Max, M4 Max, M5 Max und Intel unterstützt
+werden, verdankt es Leuten, die auf ihrer eigenen Hardware so sorgfältig gemessen haben, dass nichts
+geraten werden musste. Andere haben Teile der App selbst geschrieben – den Namen, den
+KI-Workload-Klassifikator, den Windows-Agent – oder Zahlen gefunden, die falsch waren, ohne falsch
+auszusehen.
+
+**👥 [Wer was beigetragen hat](CONTRIBUTORS.md)** (Englisch)
+
 ## Verwandtes Projekt
 
 **[Spectalo](https://spectalo.calidalab.ai/)** ist ein schöner Videoplayer, der Untertitel und

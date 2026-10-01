@@ -219,6 +219,15 @@ Apple Silicon**이 필요합니다. 이후 업데이트는 앱이 **알아서 �
 - **자동 업데이트** — Sparkle 업데이터 내장, 메뉴의 "Check for Updates…"
 - **`sudo`가 필요 없습니다.**
 
+## 기여자
+
+**SiliconScope가 정확히 읽는 칩 대부분은 이 프로젝트가 한 번도 돌려 본 적 없는 칩입니다.** 가진 건 M1
+Max 한 대뿐입니다. M2 Max, M4 Max, M5 Max, Intel 지원은 사람들이 자기 기계에서 추측할 게 남지 않을
+만큼 꼼꼼히 측정해 준 덕분입니다. 이름, AI 워크로드 분류기, Windows 에이전트처럼 앱의 일부를 직접 만든
+사람들도 있고, 멀쩡해 보이던 틀린 숫자를 찾아낸 사람들도 있습니다.
+
+**👥 [누가 무엇을 했는지 전부](CONTRIBUTORS.md)** (영어)
+
 ## 관련 프로젝트
 
 **[Spectalo](https://spectalo.calidalab.ai/ko/)** — 온디바이스 AI 자막과 번역(Whisper + Apple

@@ -391,63 +391,13 @@ Privacy-first, on-device software — mostly for Apple Silicon:
 
 ### Contributors
 
-**Two of the chips SiliconScope reads correctly are chips it has never run on.** That is not a
-figure of speech: this project owns an M1 Max, and M4 Max and M5 Max support exists only because
-two people worked on their own hardware carefully enough that nothing had to be guessed.
+**Most of the chips SiliconScope reads correctly are chips it has never run on.** This project owns
+one M1 Max; M2 Max, M4 Max, M5 Max and Intel support exist because people measured on their own
+hardware carefully enough that nothing had to be guessed. Others wrote parts of the app outright —
+the name, the AI-workload classifier, the Windows agent — or found numbers that were wrong without
+looking wrong.
 
-- **[@fparrav](https://github.com/fparrav)** — M4 Max, **diagnosed and fixed**. He found that
-  `AMC Stats` enumerates but refuses to subscribe — a different failure from the one already open —
-  and then wrote the fix himself: the PMP histogram fallback that reads per-requestor bandwidth out
-  of a residency histogram when the classic path is gone, plus a `--bandwidth` diagnostic, unit
-  tests and the channel-map documentation
-  ([#29](https://github.com/kennss/SiliconScope/pull/29), +626 lines). **That fallback is the
-  foundation the M5 fix was later built on** — memory bandwidth and the Media Engine work on both
-  generations because of his code.
-- **[@ben0112](https://github.com/ben0112)** — M5 Max, measured to a standard this project could
-  not have reached alone. The bandwidth path again (the group renamed `PMP` → `PMP0`), the AMCC
-  bucket floor, and then the whole perf-level story: a chip with **no Efficiency cores**, the
-  device-tree cluster map that now decides how *every* Mac splits its cores, and the rail→cluster
-  mapping — each experiment repeated three times, with the watts cross-checked against the bare
-  rail so double-counting could be ruled out rather than assumed
-  ([#30](https://github.com/kennss/SiliconScope/issues/30)). His measurements are written up in
-  [`docs/ioreport-channels.md`](docs/ioreport-channels.md).
-
-And parts of the app are other people's work outright:
-
-- **[@durul](https://github.com/durul)** — **named this project.** It shipped as "WhisPlayInfo",
-  a companion utility's name for something that had already outgrown it; he proposed
-  **SiliconScope** in [#4](https://github.com/kennss/SiliconScope/issues/4), argued it from what the
-  app actually is, and it has been the name ever since. He also wrote the AI-workload bottleneck
-  classifier, the GPU throttle detector and compact GPU menu-bar mode
-  ([#2](https://github.com/kennss/SiliconScope/pull/2)) — the bottleneck verdict on the dashboard is
-  his — plus the local app-bundle build script ([#3](https://github.com/kennss/SiliconScope/pull/3)).
-- **[@davidarny](https://github.com/davidarny)** — unified the popover action buttons into one
-  style, made Settings focus when opened from a popover, inset the app icon to Apple's grid, and
-  fixed Sparkle embedding in the dev build ([#7](https://github.com/kennss/SiliconScope/pull/7),
-  [#8](https://github.com/kennss/SiliconScope/pull/8),
-  [#9](https://github.com/kennss/SiliconScope/pull/9)).
-- **[@Collinw24](https://github.com/Collinw24)** — oMLX inference-server support, and a
-  `ProcessSampler` truncation fix found along the way
-  ([#26](https://github.com/kennss/SiliconScope/pull/26)).
-- **[@zhangchen456](https://github.com/zhangchen456)** — the "Show Dock icon" setting, which is what
-  lets SiliconScope run as a pure menu-bar utility.
-
-And some of it is finding numbers that were wrong without looking wrong:
-
-- **[@YuriNachos](https://github.com/YuriNachos)** — five merged fixes in four days, every one of
-  them in a value the dashboard was already displaying without complaint: `fpe2` SMC keys floored to
-  whole units, IOReport's `INT64_MIN` "unpopulated" sentinel summed as if it were a real byte count,
-  a used fraction that went negative on network volumes, and two path rules that read a *username*
-  as an AI runtime ([#38](https://github.com/kennss/SiliconScope/pull/38),
-  [#39](https://github.com/kennss/SiliconScope/pull/39),
-  [#40](https://github.com/kennss/SiliconScope/pull/40),
-  [#41](https://github.com/kennss/SiliconScope/pull/41),
-  [#42](https://github.com/kennss/SiliconScope/pull/42)). Every one arrived with tests larger than
-  the fix. These are the hardest bugs to notice from the inside — nothing looks broken.
-
-Bug reports that come with a measurement are worth more than most patches, and several of the
-entries above started as exactly that.
-
+**👥 [Everyone who made it, and what each of them did](CONTRIBUTORS.md)**
 
 - IOReport / SMC / HID sensor knowledge referenced from **NeoAsitop** (MIT) and
   **SocPowerBuddy**; the per-generation SMC temperature key→name tables are adapted from
