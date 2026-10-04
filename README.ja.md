@@ -185,6 +185,12 @@ Developer ID で署名し、**Apple の公証**も受けているので、Gateke
 - **[SnowChat](https://snowchat.calidalab.ai/)**：Signal プロトコルを独自に実装した、エンドツーエンド暗号化のメッセンジャー。
 - **[SnowClaw](https://snowclaw.calidalab.ai/)**：プライバシーを守るエージェント型 AI のリファレンスアーキテクチャ（ワーキングペーパー）。
 
+## ライセンス
+
+MIT © 2026 Kennt Kim — 詳しくは [LICENSE](LICENSE) をご覧ください。
+
+**SiliconScope** の名称とアプリアイコンは MIT ライセンスの対象外です。改変版を配布する場合は、別の名称とアイコンをお使いください。
+
 **→ [www.calidalab.ai](https://www.calidalab.ai/ja/)** · [@kennss](https://github.com/kennss)
 
 

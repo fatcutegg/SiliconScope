@@ -186,6 +186,12 @@ App 已使用 Developer ID 簽署並通過 **Apple 公證**，開啟時不會跳
 - **[SnowChat](https://snowchat.calidalab.ai/)**：以自行開發的 Signal 協定函式庫打造的端對端加密通訊軟體。
 - **[SnowClaw](https://snowclaw.calidalab.ai/)**：兼顧隱私的代理式 AI（agentic AI）參考架構（工作論文）。
 
+## 授權
+
+MIT © 2026 Kennt Kim —— 詳見 [LICENSE](LICENSE)。
+
+**SiliconScope** 名稱與應用程式圖示不在 MIT 授權範圍內。散布修改版本時，請使用不同的名稱與圖示。
+
 **→ [www.calidalab.ai](https://www.calidalab.ai/zh/)** · [@kennss](https://github.com/kennss)
 
 

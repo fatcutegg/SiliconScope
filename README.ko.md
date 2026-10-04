@@ -253,6 +253,12 @@ Intelligence)을 갖춘 비디오 플레이어입니다. 같은 Calida Lab에서
 - **[SnowChat](https://snowchat.calidalab.ai/)** — 직접 만든 Signal 프로토콜 라이브러리로 종단 간 암호화하는 메신저.
 - **[SnowClaw](https://snowclaw.calidalab.ai/)** — 개인정보를 지키는 에이전트형 AI의 참조 아키텍처(연구 논문).
 
+## 라이선스
+
+MIT © 2026 Kennt Kim — 자세한 내용은 [LICENSE](LICENSE)를 참고하시기 바랍니다.
+
+**SiliconScope**라는 이름과 앱 아이콘은 MIT 라이선스 대상이 아닙니다. 수정한 버전을 배포할 때는 다른 이름과 아이콘을 사용해 주시기 바랍니다.
+
 **→ [www.calidalab.ai](https://www.calidalab.ai/ko/)** · [@kennss](https://github.com/kennss)
 
 

@@ -180,6 +180,12 @@ App 已使用 Developer ID 签名并通过 **Apple 公证**，打开时不会弹
 - **[SnowChat](https://snowchat.calidalab.ai/)** — 端到端加密的即时通讯应用，基于自研的 Signal 协议库。
 - **[SnowClaw](https://snowclaw.calidalab.ai/)** — 注重隐私保护的智能体 AI 参考架构（工作论文）。
 
+## 许可证
+
+MIT © 2026 Kennt Kim —— 详见 [LICENSE](LICENSE)。
+
+**SiliconScope** 名称与应用图标不在 MIT 许可范围内。发布修改版本时，请使用不同的名称和图标。
+
 **→ [www.calidalab.ai](https://www.calidalab.ai/zh-Hans/)** · [@kennss](https://github.com/kennss)
 
 

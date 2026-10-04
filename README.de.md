@@ -279,6 +279,13 @@ Software, die lokal auf dem Gerät läuft und den Datenschutz an erste Stelle se
 - **[SnowChat](https://snowchat.calidalab.ai/)**: Ende-zu-Ende-verschlüsselter Messenger auf Basis unserer eigenen Bibliothek für das Signal-Protokoll.
 - **[SnowClaw](https://snowclaw.calidalab.ai/)**: eine Referenzarchitektur für agentische KI, die die Privatsphäre wahrt (Arbeitspapier).
 
+## Lizenz
+
+MIT © 2026 Kennt Kim — siehe [LICENSE](LICENSE).
+
+Der Name **SiliconScope** und das App-Symbol fallen nicht unter die MIT-Lizenz. Wer eine veränderte
+Fassung weitergibt, verwendet bitte einen anderen Namen und ein anderes Symbol.
+
 **→ [www.calidalab.ai](https://www.calidalab.ai/)** · [@kennss](https://github.com/kennss)
 
 

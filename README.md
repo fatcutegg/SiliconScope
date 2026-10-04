@@ -415,3 +415,6 @@ looking wrong.
 ## License
 
 MIT © 2026 Kennt Kim — see [LICENSE](LICENSE).
+
+The **SiliconScope** name and app icon are not covered by the MIT license. If you distribute a modified
+version, please give it a different name and icon.
