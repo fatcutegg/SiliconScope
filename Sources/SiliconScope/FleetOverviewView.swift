@@ -1,7 +1,7 @@
 //
 //  File:      FleetOverviewView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-30
+//  Updated:   2026-10-02
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  At-a-glance view of every machine at once — an adaptive grid of compact tiles. THIS
 //             MAC is always the first tile (a laptop glyph, taps through to its full dashboard);
@@ -204,7 +204,10 @@ private struct FleetTile: View {
         (tag("ANE", MetricPalette.aneC)
          + dim(" " + (a.aneActiveFraction.map { String(format: "%.0f%%", $0 * 100) }
                       ?? a.powerSample.text(a.aneWatts, format: "%.1fW")) + " · ")
-         + tag("BW", MetricPalette.mediaC)
+         // "Mem BW", not "BW": beside the ANE figure a bare "BW" read as the ANE's own traffic,
+         // when it is the whole chip's memory bandwidth (a GPU LLM pushes it to ~270 GB/s while
+         // the ANE sits at 0%).
+         + tag("Mem BW", MetricPalette.mediaC)
          + dim(String(format: " %.0f GB/s", a.bandwidth.totalGBs)))
             .font(Theme.font(.caption)).lineLimit(1)
     }
