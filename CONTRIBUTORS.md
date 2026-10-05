@@ -96,6 +96,10 @@ changes:
   caught a fabricated "Apple Silicon" label within the hour ([#56](https://github.com/kennss/SiliconScope/issues/56)).
 - **[@havard-vold](https://github.com/havard-vold)** — LM Studio's loaded model was invisible
   ([#64](https://github.com/kennss/SiliconScope/issues/64)).
+- **[@fatcutegg](https://github.com/fatcutegg)** — measured what Fleet cost on the wire: ~11 KB a
+  poll every 3 s, ~9 GB a month per machine, and most of it a TLS handshake rather than data. That
+  measurement found the cause, and Fleet now polls only while its window is open, over one kept
+  connection, gzipped ([#71](https://github.com/kennss/SiliconScope/issues/71)).
 - **[@progenitor-amborella](https://github.com/progenitor-amborella)** — worked out that Lockdown
   Mode and a block-all firewall hide a Mac from Fleet, and how to let it in ([#63](https://github.com/kennss/SiliconScope/issues/63)).
 
