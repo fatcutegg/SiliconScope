@@ -1,7 +1,7 @@
 //
 //  File:      SiliconScopeRootView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-10-05
+//  Updated:   2026-10-06
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  The single-window shell: a NavigationSplitView with a "Devices" sidebar (This Mac +
 //             every discovered fleet agent) and a detail pane that shows the selected device's
@@ -38,9 +38,24 @@ struct SiliconScopeRootView: View {
     /// Pairing key of the machine being renamed; non-nil drives the rename prompt.
     @State private var renameKey: String?
     @State private var renameText = ""
+    /// Read so the fleet can tell whether its sidebar rows are on screen.
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var windowVisible = true
+
+    /// Whether any fleet data is on screen: the window is visible, and either the sidebar (whose
+    /// rows carry each machine's live summary) is open or a fleet pane is selected. With the
+    /// sidebar collapsed on This Mac, nothing remote is shown, so nothing remote is polled (#71).
+    /// Only an explicitly collapsed sidebar counts as hidden; `.automatic` is treated as shown,
+    /// so an uncertain state errs toward polling rather than toward a stale row.
+    private var fleetOnScreen: Bool {
+        guard windowVisible else { return false }
+        if columnVisibility != .detailOnly { return true }
+        if case .thisMac = selection ?? .thisMac { return false }
+        return true
+    }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $selection) {
                 Section("Devices") {
                     Label("Fleet", systemImage: "square.grid.2x2")
@@ -144,11 +159,12 @@ struct SiliconScopeRootView: View {
         // window is on screen (#13). Observed HERE, at the window root, because the panes below
         // come and go with the sidebar selection — an observer inside one of them stops reporting
         // the moment another is selected. See WindowVisibilityObserver. The fleet polls on the
-        // same signal: this window is the only place its data is shown (#71).
+        // same signal, narrowed to what the window is showing: see `fleetOnScreen` (#71).
         .background(WindowVisibilityObserver { visible in
             monitor.windowVisible = visible
-            fleet.watching = visible
+            windowVisible = visible
         })
+        .onChange(of: fleetOnScreen, initial: true) { _, onScreen in fleet.watching = onScreen }
     }
 }
 

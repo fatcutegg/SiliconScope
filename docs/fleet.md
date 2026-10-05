@@ -46,15 +46,17 @@ page; a fanless Mac says *fanless* instead of 0 rpm.
 
 ## When it uses the network
 
-**Only while the SiliconScope window is on screen.** The window is the only place fleet data is
-shown, so that is the only time machines are polled:
+**Only while fleet data is on screen.** Machines are polled when the SiliconScope window is visible
+*and* it is showing them — the Devices sidebar is open (each row carries a machine's live summary),
+or the Fleet overview or a machine's page is selected:
 
-- **Window open:** every machine is polled every 3 seconds, over one connection per machine that
+- **On screen:** every machine is polled every 3 seconds, over one connection per machine that
   stays open between polls, with the reply gzipped.
-- **Window closed or minimised:** no machine is polled and every connection is closed. A machine
-  you check once a day costs nothing the rest of the day. Finding machines on your LAN (mDNS)
-  keeps running; it stays on your local network.
-- **Window back:** polling resumes at once. The charts show a break where nothing was measured, so
+- **Not on screen** — the window closed, minimised or covered, or the sidebar collapsed while you
+  look at This Mac: no machine is polled and every connection is closed. A machine you check once a
+  day costs nothing the rest of the day. Finding machines on your LAN (mDNS) keeps running; it
+  stays on your local network.
+- **Back on screen:** polling resumes at once. The charts show a break where nothing was measured, so
   a reading from before and one from now are not drawn as if they were seconds apart.
 
 Measured against a cloud agent, one minute each: 106 KB with the window open in 4.5.0 and earlier,
