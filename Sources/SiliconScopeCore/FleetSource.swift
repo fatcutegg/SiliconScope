@@ -1,7 +1,7 @@
 //
 //  File:      FleetSource.swift
 //  Created:   2026-07-21
-//  Updated:   2026-07-22
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Transports behind the source-agnostic MachineMetrics boundary. `FleetSource` is the
 //             protocol the aggregator/UI depend on; concrete transports are interchangeable:
@@ -14,6 +14,9 @@
 //             from the agent's mDNS TXT) + a Bearer token; SSH wraps a blocking Process on a detached
 //             task so it never stalls the caller. Errors are surfaced as short strings for the row;
 //             `.unauthorized` (HTTP 401) is distinct so the UI can prompt for pairing.
+//             HTTP sessions are long-lived and pooled per agent (FleetSessionPool), so a poll reuses
+//             the open TLS connection: a session per fetch handshook every 3 s, which was most of
+//             the ~11 KB a poll cost (#71).
 //
 import Foundation
 import CryptoKit
@@ -73,16 +76,7 @@ public struct HTTPFleetSource: FleetSource {
         // HTTPS: pin the agent's self-signed cert (default trust would reject it). If we already have
         // a pin, enforce it; otherwise trust the first cert and report it upward (TOFU). Plain HTTP
         // uses the shared session (used only in dev/tests; production agents are always TLS).
-        let session: URLSession
-        if endpoint.scheme == "https" {
-            session = URLSession(configuration: .ephemeral,
-                                 delegate: PinnedCertDelegate(pinned: pinnedFingerprint,
-                                                              onObserved: onObservedFingerprint),
-                                 delegateQueue: nil)
-        } else {
-            session = URLSession(configuration: .ephemeral)
-        }
-        defer { session.finishTasksAndInvalidate() }
+        let session = FleetSessionPool.shared.session(for: self)
 
         let data: Data, resp: URLResponse
         do {
@@ -106,6 +100,67 @@ public struct HTTPFleetSource: FleetSource {
             throw FleetFetchError.decodeFailed(String(describing: error))
         }
     }
+}
+
+/// One long-lived URLSession per agent connection identity: the endpoint and the pin it is checked
+/// against. Reusing it keeps the TLS connection open between polls instead of handshaking for each.
+///
+/// The pin is part of the key because the delegate holds it: when TOFU learns a certificate, the
+/// source comes back with a pin and gets a new, enforcing session, and the trusting one is dropped.
+/// FleetMonitor drops sessions it no longer polls (`retainOnly`) and closes them all when polling
+/// stops (`closeAll`), so nothing stays connected to an agent while no one is watching.
+public final class FleetSessionPool: @unchecked Sendable {
+    public static let shared = FleetSessionPool()
+
+    private let lock = NSLock()
+    private var sessions: [String: URLSession] = [:]   // guarded by `lock`
+
+    public init() {}
+
+    static func key(endpoint: URL, pinned: String?) -> String {
+        "\(endpoint.scheme ?? "")://\(endpoint.host ?? ""):\(endpoint.port ?? 0)|\(pinned?.lowercased() ?? "tofu")"
+    }
+
+    func session(for source: HTTPFleetSource) -> URLSession {
+        let key = Self.key(endpoint: source.endpoint, pinned: source.pinnedFingerprint)
+        lock.lock(); defer { lock.unlock() }
+        if let existing = sessions[key] { return existing }
+        let config = URLSessionConfiguration.ephemeral
+        config.httpMaximumConnectionsPerHost = 1          // one poll at a time per agent
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let session: URLSession
+        if source.endpoint.scheme == "https" {
+            session = URLSession(configuration: config,
+                                 delegate: PinnedCertDelegate(pinned: source.pinnedFingerprint,
+                                                              onObserved: source.onObservedFingerprint),
+                                 delegateQueue: nil)
+        } else {
+            session = URLSession(configuration: config)    // plain HTTP: dev and tests only
+        }
+        sessions[key] = session
+        return session
+    }
+
+    /// Keep only the sessions these sources use; close the rest.
+    public func retainOnly(_ sources: [HTTPFleetSource]) {
+        let keep = Set(sources.map { Self.key(endpoint: $0.endpoint, pinned: $0.pinnedFingerprint) })
+        lock.lock()
+        let stale = sessions.filter { !keep.contains($0.key) }
+        for k in stale.keys { sessions[k] = nil }
+        lock.unlock()
+        for s in stale.values { s.invalidateAndCancel() }
+    }
+
+    /// Close every session and its connections.
+    public func closeAll() {
+        lock.lock()
+        let all = Array(sessions.values)
+        sessions.removeAll()
+        lock.unlock()
+        for s in all { s.invalidateAndCancel() }
+    }
+
+    var count: Int { lock.lock(); defer { lock.unlock() }; return sessions.count }
 }
 
 /// URLSession delegate implementing TOFU pinning of the agent's self-signed cert (default TLS trust

@@ -1,7 +1,7 @@
 //
 //  File:      FleetMonitor.swift
 //  Created:   2026-07-21
-//  Updated:   2026-09-24
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  The Mac-side fleet aggregator: owns mDNS discovery (FleetDiscovery), holds the set of
 //             discovered machines, and polls each on an interval for the latest MachineMetrics (or
@@ -11,6 +11,11 @@
 //  Notes:     Sources are DYNAMIC — discovery adds/removes them as agents appear/vanish, preserving
 //             a machine's last metrics across a source refresh. Fetches run OFF the main actor
 //             (task-group child tasks are non-isolated) so no transport stalls the UI.
+//             Polling runs only while the window is on screen (`watching`), the same rule the local
+//             monitor follows (#13): the window is the only place fleet data is shown, so a closed
+//             window costs the agents nothing (#71). Discovery keeps running — it is local mDNS and
+//             cheap, and keeps the list ready for when the window returns. On resume each history
+//             gets a gap sample, so a chart doesn't join two readings an hour apart as if adjacent.
 //
 import Foundation
 import Observation
@@ -78,11 +83,31 @@ final class FleetMonitor {
         self.interval = interval
     }
 
+    /// Whether anyone can see fleet data: true while the app window is on screen. Off → no poll
+    /// runs and every agent connection is closed; on → a gap in each chart, then an immediate poll.
+    var watching = false {
+        didSet {
+            guard watching != oldValue else { return }
+            if watching {
+                markGap()
+                startPolling()
+            } else {
+                task?.cancel()
+                task = nil
+                FleetSessionPool.shared.closeAll()
+            }
+        }
+    }
+
     func start() {
         if discovery == nil {
             discovery = FleetDiscovery { [weak self] sources in self?.setSources(sources) }
         }
         discovery?.start()
+        if watching { startPolling() }
+    }
+
+    private func startPolling() {
         guard task == nil else { return }
         task = Task { [weak self] in
             while !Task.isCancelled {
@@ -96,6 +121,7 @@ final class FleetMonitor {
         discovery?.stop()
         task?.cancel()
         task = nil
+        FleetSessionPool.shared.closeAll()
     }
 
     /// Replace the source set (from discovery), keeping the last metrics for machines that persist.
@@ -203,7 +229,11 @@ final class FleetMonitor {
     }
 
     private func pollAll() async {
+        // Discovery and pairing changes ask for an immediate poll; with no one watching, it waits
+        // for the window to come back.
+        guard watching else { return }
         let sources = entries.map(\.source)
+        FleetSessionPool.shared.retainOnly(sources.compactMap { $0 as? HTTPFleetSource })
         await withTaskGroup(of: (String, Result<MachineMetrics, Error>).self) { group in
             for src in sources {
                 group.addTask {
@@ -258,6 +288,21 @@ final class FleetMonitor {
                       vramFrac: m.gpus.first?.vramFraction ?? 0,
                       aneFrac: aneFrac,
                       bwFrac: bwFrac)
+    }
+
+    /// A sample that draws as a break in every trace (Sparkline skips non-finite values).
+    private func gapSample() -> Sample {
+        sampleSeq += 1
+        return Sample(id: sampleSeq, t: Date(), cpu: .nan, gpuUtil: .nan, gpuPowerW: .nan,
+                      memFrac: .nan, vramFrac: .nan, aneFrac: .nan, bwFrac: .nan)
+    }
+
+    /// Break every history where polling stopped, unless it already ends in a break.
+    private func markGap() {
+        for id in history.keys where history[id]?.last.map({ $0.cpu.isFinite }) == true {
+            history[id]?.append(gapSample())
+        }
+        if localHistory.last.map({ $0.cpu.isFinite }) == true { localHistory.append(gapSample()) }
     }
 
     /// Append one rolling-history sample for a remote machine, trimming to the recent window.

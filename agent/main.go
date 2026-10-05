@@ -1,7 +1,7 @@
 //
 //  File:      main.go
 //  Created:   2026-07-21
-//  Updated:   2026-09-29
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  SiliconScope fleet agent (v0.1, Linux). Samples CPU / memory / NVIDIA GPU /
 //             Ollama and prints ONE MachineMetrics JSON to stdout. This is the source-agnostic
@@ -221,9 +221,8 @@ func runServer(addr string) {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/metrics", requireToken(token, func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(sample())
+	mux.HandleFunc("/metrics", requireToken(token, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, sample())
 	}))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
@@ -239,6 +238,9 @@ func runServer(addr string) {
 		Addr:              addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
+		// A viewer keeps its connection open between polls (every 3 s); one that stops watching
+		// leaves it idle, and this closes it rather than holding it forever (#71).
+		IdleTimeout: 30 * time.Second,
 		TLSConfig:         &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12},
 	}
 	if err := srv.ListenAndServeTLS("", ""); err != nil {

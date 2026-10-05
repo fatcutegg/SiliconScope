@@ -1,7 +1,7 @@
 //
 //  File:      FleetAgentServer.swift
 //  Created:   2026-07-22
-//  Updated:   2026-07-24
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  The Mac-side fleet agent: serves this machine's MachineMetrics over token-protected
 //             TLS and advertises via mDNS (_sscope-agent._tcp), so another Mac's Fleet view discovers
@@ -12,6 +12,10 @@
 //             and loaded as a SecIdentity through a PKCS#12; the p12 password is not a secret (the
 //             viewer pins the cert fingerprint, not a CA). GET /metrics requires the token; GET
 //             /healthz is open for discovery/liveness. HTTP is parsed by hand — only tiny GETs.
+//             Connections are kept alive (HTTP/1.1's default) and closed after `idleTimeout`
+//             without a request, and /metrics is gzipped when the request accepts it: a viewer
+//             polls every 3 s, and a fresh TLS handshake plus an uncompressed body per poll was
+//             ~11 KB each time (#71).
 //
 import Foundation
 import Network
@@ -75,37 +79,71 @@ public final class FleetAgentServer: @unchecked Sendable {
 
     // MARK: - HTTP (tiny GET server)
 
+    /// How long a kept-alive connection may sit without a request. A viewer polls every 3 s, so
+    /// only a viewer that has stopped watching ever reaches it.
+    static let idleTimeout: TimeInterval = 30
+
     private func handle(_ conn: NWConnection) {
         conn.stateUpdateHandler = { state in
             if case .failed = state { conn.cancel() }
         }
         conn.start(queue: .global(qos: .utility))
-        readRequest(conn, buffer: Data())
+        readRequest(conn, buffer: Data(), idle: IdleTimer())
     }
 
-    private func readRequest(_ conn: NWConnection, buffer: Data) {
+    /// Closes a connection left idle between requests. Each arm supersedes the previous one, and
+    /// any bytes arriving disarm it — a generation counter rather than a cancellable work item,
+    /// so the timer can cross into the receive callback as a Sendable value.
+    private final class IdleTimer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var generation = 0       // guarded by `lock`
+
+        func arm(_ conn: NWConnection, after seconds: TimeInterval) {
+            lock.lock(); generation += 1; let armed = generation; lock.unlock()
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + seconds) { [self] in
+                lock.lock(); let current = generation; lock.unlock()
+                if current == armed { conn.cancel() }
+            }
+        }
+
+        func disarm() { lock.lock(); generation += 1; lock.unlock() }
+    }
+
+    private func readRequest(_ conn: NWConnection, buffer: Data, idle: IdleTimer) {
+        if buffer.isEmpty { idle.arm(conn, after: Self.idleTimeout) }
         conn.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] data, _, isComplete, error in
+            idle.disarm()
             guard let self else { conn.cancel(); return }
             var buf = buffer
             if let data { buf.append(data) }
             if let range = buf.range(of: Data("\r\n\r\n".utf8)) {
                 let header = String(data: buf[..<range.lowerBound], encoding: .utf8) ?? ""
-                self.respond(conn, header: header)
+                // Only bodiless GETs are served, so whatever follows the blank line is the next
+                // request (pipelined) and is carried over rather than dropped.
+                let rest = Data(buf[range.upperBound...])
+                self.respond(conn, header: header) { keepAlive in
+                    if keepAlive && !isComplete { self.readRequest(conn, buffer: rest, idle: idle) } else { conn.cancel() }
+                }
             } else if isComplete || error != nil || buf.count > 16384 {
                 conn.cancel()
             } else {
-                self.readRequest(conn, buffer: buf)
+                self.readRequest(conn, buffer: buf, idle: idle)
             }
         }
     }
 
-    private func respond(_ conn: NWConnection, header: String) {
+    private func respond(_ conn: NWConnection, header: String, then next: @escaping @Sendable (Bool) -> Void) {
         let lines = header.components(separatedBy: "\r\n")
         let requestLine = lines.first ?? ""
         let fields = requestLine.split(separator: " ")
         let path = fields.count >= 2 ? String(fields[1]) : "/"
-        let authHeader = lines.first { $0.lowercased().hasPrefix("authorization:") }
-            .map { String($0.dropFirst("authorization:".count)).trimmingCharacters(in: .whitespaces) } ?? ""
+        func field(_ name: String) -> String? {
+            lines.dropFirst().first { $0.lowercased().hasPrefix(name + ":") }
+                .map { String($0.dropFirst(name.count + 1)).trimmingCharacters(in: .whitespaces) }
+        }
+        let authHeader = field("authorization") ?? ""
+        // HTTP/1.1 keeps the connection unless the client says otherwise; HTTP/1.0 is not kept.
+        let keepAlive = requestLine.hasSuffix("HTTP/1.1") && field("connection")?.lowercased() != "close"
 
         let status: String, contentType: String, body: Data, needsAuthChallenge: Bool
         switch path {
@@ -121,11 +159,19 @@ public final class FleetAgentServer: @unchecked Sendable {
             status = "404 Not Found"; contentType = "text/plain"; body = Data("not found".utf8); needsAuthChallenge = false
         }
 
-        var head = "HTTP/1.1 \(status)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nConnection: close\r\n"
+        var payload = body, encoding = ""
+        if path == "/metrics", needsAuthChallenge == false,
+           Gzip.accepted(byAcceptEncoding: field("accept-encoding")), let gz = Gzip.encode(body) {
+            payload = gz
+            encoding = "Content-Encoding: gzip\r\nVary: Accept-Encoding\r\n"
+        }
+        var head = "HTTP/1.1 \(status)\r\nContent-Type: \(contentType)\r\nContent-Length: \(payload.count)\r\n"
+        head += encoding
+        head += keepAlive ? "Connection: keep-alive\r\n" : "Connection: close\r\n"
         if needsAuthChallenge { head += "WWW-Authenticate: Bearer\r\n" }
         head += "\r\n"
-        var out = Data(head.utf8); out.append(body)
-        conn.send(content: out, completion: .contentProcessed { _ in conn.cancel() })
+        var out = Data(head.utf8); out.append(payload)
+        conn.send(content: out, completion: .contentProcessed { error in next(keepAlive && error == nil) })
     }
 
     // MARK: - Token + TLS identity (persisted, mirrors security.go)
