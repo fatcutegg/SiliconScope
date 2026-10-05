@@ -1,7 +1,7 @@
 //
 //  File:      main.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-30
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Headless SiliconScope fleet agent for a Mac (launchd / CLI). Samples this Mac's live
 //             metrics via Core's SystemSampler once a second, maps them to MachineMetrics, and serves
@@ -25,7 +25,8 @@ import SiliconScopeCore
 // page for anything older, so this is the number to look for when a remote page looks thin.
 // 1.3.0: fans on every architecture as their own field, Intel temperatures (sp78), and "fanless"
 // only when the SMC says so (#69); `--once` for diagnosis.
-private let agentVersion = "1.3.0"
+// 1.4.0: keeps the viewer's connection open between polls and gzips /metrics (#71).
+private let agentVersion = "1.4.0"
 private let defaultPort: UInt16 = 7799
 
 /// What the local AI runtime's API last said, and which runtimes the sample loop last saw — shared

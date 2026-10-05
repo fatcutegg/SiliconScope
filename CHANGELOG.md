@@ -1,5 +1,30 @@
 # Changelog
 
+## v4.5.1 — 2026-10-05
+
+**Fleet uses the network only while its window is on screen.** It used to poll
+every machine every 3 s for as long as the app ran, and each poll opened a new
+TLS connection: about 11 KB a poll between two Macs, around 9 GB a month per
+machine, most of it handshake rather than data. Now:
+
+- **Window closed or minimised: nothing.** No machine is polled and every
+  connection is closed. Finding machines on your LAN keeps running.
+- **Window open: one connection per machine**, kept open between polls, and the
+  reply is **gzipped** — 7.7 KB → 2.4 KB from a Mac, 1.5 KB → 0.6 KB from a Linux
+  box.
+- **Window back:** polling resumes at once, and the charts show a break where
+  nothing was measured instead of joining two readings hours apart.
+
+Measured against a cloud agent, one minute each: 106 KB with the window open in
+4.5.0, 29 KB now before the agent was updated, nothing with the window closed.
+**Update your agents to 1.4.0** for the compression, and for a Mac agent to keep
+the connection open. ([#71](https://github.com/kennss/SiliconScope/issues/71),
+diagnosed and measured by @fatcutegg)
+
+- A Mac's Fleet tile said "ANE 0% · BW 271 GB/s", which read as the Neural
+  Engine's own traffic. It is the whole chip's memory bandwidth, and now says
+  "Mem BW".
+
 ## v4.5.0 — 2026-09-30
 
 **Machines added by a Tailscale or VPN address now connect.** macOS's App
