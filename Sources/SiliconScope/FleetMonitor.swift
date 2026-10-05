@@ -1,7 +1,7 @@
 //
 //  File:      FleetMonitor.swift
 //  Created:   2026-07-21
-//  Updated:   2026-09-24
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  The Mac-side fleet aggregator: owns mDNS discovery (FleetDiscovery), holds the set of
 //             discovered machines, and polls each on an interval for the latest MachineMetrics (or
@@ -10,7 +10,9 @@
 //             swappable without touching this or the view.
 //  Notes:     Sources are DYNAMIC — discovery adds/removes them as agents appear/vanish, preserving
 //             a machine's last metrics across a source refresh. Fetches run OFF the main actor
-//             (task-group child tasks are non-isolated) so no transport stalls the UI.
+//             (task-group child tasks are non-isolated) so no transport stalls the UI. A paused
+//             machine (FleetPausedStore) stays listed but is skipped entirely, so a pause stops the
+//             traffic without touching the pairing.
 //
 import Foundation
 import Observation
@@ -60,6 +62,10 @@ final class FleetMonitor {
 
     private(set) var entries: [Entry] = []
     private(set) var history: [String: [Sample]] = [:]   // machine id → rolling samples
+
+    /// Pairing keys the user paused — listed, but not polled at all (FleetPausedStore). Viewer-side
+    /// only: the address, token and pinned certificate stay, so Resume reconnects on the next tick.
+    private(set) var paused: Set<String> = Set(FleetPausedStore.all())
 
     // This Mac — always the first tile in the Fleet overview (before any remote agent). Sampled
     // locally each poll tick from `localProvider` (the app wires it to the live monitor), so it's
@@ -126,6 +132,7 @@ final class FleetMonitor {
 
     /// Store a machine's pairing token, rebuild its source with the token applied, and re-poll now.
     func pair(name: String, token: String) {
+        clearPause(name)   // pairing is an explicit "connect it", so it also lifts a pause
         FleetPairingStore.setToken(token, for: name)
         discovery?.rebuild()
         Task { await pollAll() }
@@ -145,6 +152,30 @@ final class FleetMonitor {
         discovery?.rebuild()
     }
 
+    /// Stop polling a machine entirely until resumed. Its row, address, token and pinned
+    /// certificate stay — this is not an unpair — and the state is persisted (FleetPausedStore).
+    /// The last snapshot is kept so the machine's display name survives, but every view reads
+    /// "Paused" ahead of it, so no stale number is shown while it is not being polled.
+    func pause(name: String) {
+        FleetPausedStore.pause(name)
+        paused = Set(FleetPausedStore.all())
+    }
+
+    /// Resume polling a paused machine; data returns on the next tick (polled immediately).
+    func resume(name: String) {
+        FleetPausedStore.resume(name)
+        paused = Set(FleetPausedStore.all())
+        Task { await pollAll() }
+    }
+
+    /// Lift a pause as part of an action that (re)connects the machine — pairing it, re-adding it,
+    /// or removing it from the list — so a stale pause never silently outlives the machine's row.
+    private func clearPause(_ name: String) {
+        guard paused.contains(name) else { return }
+        FleetPausedStore.resume(name)
+        paused = Set(FleetPausedStore.all())
+    }
+
     /// Add a manually-entered off-LAN endpoint (Tailscale / VPN / cloud, which mDNS can't reach) and
     /// re-poll now. It appears alongside discovered machines and pairs the same way (token + TOFU).
     func addManual(name: String, host: String, port: Int) {
@@ -158,6 +189,7 @@ final class FleetMonitor {
     /// Tailscale / VPN / cloud) do we also register the address manually, which avoids listing the
     /// same box twice.
     func applyPairingLink(_ link: PairingLink) {
+        clearPause(link.name)   // a pairing link is an explicit "connect it", so it also lifts a pause
         FleetPairingStore.setToken(link.token, for: link.name)
         let alreadyDiscovered = entries.contains { $0.source.label == link.name }
         if !alreadyDiscovered {
@@ -171,6 +203,7 @@ final class FleetMonitor {
     /// records the choice rather than deleting an address, and forgets the pairing so a later
     /// restore starts clean. Reversible via `restoreHidden` — see FleetHiddenStore.
     func removeDiscovered(name: String) {
+        clearPause(name)   // a removed machine must not keep a hidden pause for a later restore
         FleetHiddenStore.hide(name)
         FleetPairingStore.removeToken(for: name)
         FleetPairingStore.removeFingerprint(for: name)
@@ -195,6 +228,7 @@ final class FleetMonitor {
 
     /// Remove a manually-added endpoint and forget its pairing token + cert pin (clean re-add later).
     func removeManual(id: String, name: String) {
+        clearPause(name)   // the address is going away, so its pause goes with it
         FleetManualStore.remove(id: id)
         FleetPairingStore.removeToken(for: name)
         FleetPairingStore.removeFingerprint(for: name)
@@ -203,7 +237,8 @@ final class FleetMonitor {
     }
 
     private func pollAll() async {
-        let sources = entries.map(\.source)
+        // A paused machine is not polled at all — no connection, no traffic (FleetPausedStore).
+        let sources = entries.filter { !paused.contains($0.source.label) }.map(\.source)
         await withTaskGroup(of: (String, Result<MachineMetrics, Error>).self) { group in
             for src in sources {
                 group.addTask {

@@ -1,7 +1,7 @@
 //
 //  File:      FleetOverviewView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-10-02
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  At-a-glance view of every machine at once — an adaptive grid of compact tiles. THIS
 //             MAC is always the first tile (a laptop glyph, taps through to its full dashboard);
@@ -12,6 +12,7 @@
 //             one screen ("which box is busy / idle / hot right now"). With no remote machine yet,
 //             the page carries the install command (copyable) and a link to docs/fleet.md. A tile
 //             of a box running Docker ends with its container count, and how many were restarted.
+//             A paused machine keeps its tile, marked "Paused" instead of showing stale numbers.
 //  Notes:     Uses the shared `Sparkline` + `MetricPalette` (NOT Swift Charts) to match the local
 //             GPU/CPU cards exactly — GPU=green, VRAM=sky-cyan, CPU=blue, RAM=amber. All four series
 //             are normalized to 0…1 (util ÷100; VRAM/RAM fractions as-is) to share one axis. FleetTile
@@ -31,12 +32,13 @@ struct FleetOverviewView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: Space.section)], spacing: Space.section) {
                 if let local = fleet.localMetrics {
                     FleetTile(hostname: local.hostname, metrics: local, history: fleet.localHistory,
-                              needsPairing: false, error: nil, isLocal: true, onTap: onSelectLocal)
+                              needsPairing: false, error: nil, isPaused: false, isLocal: true, onTap: onSelectLocal)
                 }
                 ForEach(fleet.entries) { entry in
                     FleetTile(hostname: entry.displayName,
                               metrics: entry.metrics, history: fleet.history[entry.id] ?? [],
                               needsPairing: entry.needsPairing, error: entry.error,
+                              isPaused: fleet.paused.contains(entry.pairingKey),
                               isLocal: false, onTap: { onSelect(entry.id) })
                 }
             }
@@ -97,6 +99,7 @@ private struct FleetTile: View {
     let history: [FleetMonitor.Sample]
     let needsPairing: Bool
     let error: String?
+    let isPaused: Bool
     let isLocal: Bool                    // This Mac: a laptop glyph instead of a pairing lock
     let onTap: () -> Void
 
@@ -112,6 +115,10 @@ private struct FleetTile: View {
 
             if needsPairing {
                 spacerText("Pairing required", .orange)
+            } else if isPaused {
+                // Paused is a viewer-side choice, not a failure: the tile stays, with no numbers
+                // that are no longer being fetched, and Resume is one context-menu click away.
+                spacerText("Paused", .secondary)
             } else if let m = metrics {
                 // A GPU is optional — a Raspberry Pi, CPU-only server or VM has none, and requiring
                 // one here left such a machine stuck on "Connecting…" even though it was reporting
@@ -177,7 +184,7 @@ private struct FleetTile: View {
         if isLocal {
             Image(systemName: "laptopcomputer").font(.system(size: Icon.small)).foregroundStyle(.secondary)
         } else {
-            Image(systemName: needsPairing ? "lock.slash" : "lock.fill")
+            Image(systemName: isPaused ? "pause.circle" : (needsPairing ? "lock.slash" : "lock.fill"))
                 .font(.system(size: Icon.small)).foregroundStyle(needsPairing ? .orange : .secondary)
         }
     }
@@ -238,6 +245,7 @@ private struct FleetTile: View {
 
     private var statusColor: Color {
         if needsPairing { return .orange }
+        if isPaused { return .gray }
         if metrics != nil { return .green }
         if error != nil { return .red }
         return .gray

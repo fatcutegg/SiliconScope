@@ -1,16 +1,17 @@
 //
 //  File:      FleetMachineDetailView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-24
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  Detail pane for one fleet machine. When metrics are in, it renders the SAME
 //             DashboardView the local "This Mac" uses — in remote mode, so a remote Mac looks
 //             exactly like This Mac (E/P · GPU/Media/ANE · memory+bandwidth · sensors · network+
 //             disk), minus the cards a wire agent can't fill (process/AI-runtime). Before metrics, it
-//             shows pairing / error / connecting states.
+//             shows pairing / paused / error / connecting states.
 //  Notes:     Remote data is mapped to a synthetic SystemSnapshot via DashboardState(remote:), so
 //             all the dashboard's cards + verdict logic are reused with no duplication. Pairing is
-//             in-place (token from the agent's Settings / installer).
+//             in-place (token from the agent's Settings / installer). A paused machine renders a
+//             resume prompt instead of the last snapshot — the numbers are not being fetched.
 //
 import SwiftUI
 import SiliconScopeCore
@@ -22,6 +23,8 @@ struct FleetMachineDetailView: View {
 
     private var entry: FleetMonitor.Entry? { fleet.entries.first { $0.id == machineID } }
     private var pairName: String { entry?.source.label ?? machineID }
+    /// Paused is a viewer-side choice — the machine is listed but not polled (FleetPausedStore).
+    private var isPaused: Bool { entry.map { fleet.paused.contains($0.pairingKey) } ?? false }
 
     var body: some View {
         Group {
@@ -32,6 +35,10 @@ struct FleetMachineDetailView: View {
             // authenticate against has no readings, whatever is still in the cache.
             if entry?.needsPairing == true {
                 pairingPrompt
+            } else if isPaused {
+                // Paused also precedes the cached metrics: the last snapshot is kept only so the
+                // machine's display name survives, not to be shown while it is not being polled.
+                pausedPrompt
             } else if let m = entry?.metrics {
                 if m.kind == "mac" {
                     // Reuse the local Mac dashboard (E/P · ANE · Media · bandwidth · fans).
@@ -64,6 +71,20 @@ struct FleetMachineDetailView: View {
         .sheet(isPresented: $showPairing) {
             PairingSheet(name: pairName) { token in fleet.pair(name: pairName, token: token) }
         }
+    }
+
+    private var pausedPrompt: some View {
+        VStack(spacing: Space.section) {
+            Image(systemName: "pause.circle").font(.system(size: Icon.hero)).foregroundStyle(.secondary)
+            Text("Paused").font(Theme.font(.headline))
+            Text("This machine is not being polled. Resume to start reading it again.")
+                .font(Theme.font(.emphasis)).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            Button("Resume") { fleet.resume(name: pairName) }
+                .controlSize(.large).buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(Space.page)
     }
 
     private func placeholder(_ icon: String, _ text: String, _ color: Color) -> some View {

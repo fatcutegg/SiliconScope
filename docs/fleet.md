@@ -147,6 +147,10 @@ and token-protected either way, but a closed port can't be probed.
 Right-click a machine in the sidebar:
 
 - **Rename…** — changes the label on this Mac only. The pairing is untouched.
+- **Pause monitoring** / **Resume monitoring** — stops polling this machine entirely (no
+  connections, no traffic) until you resume it. The row, address, token and pinned certificate all
+  stay, so Resume starts reading it again on the next tick. Useful for a machine you only watch
+  occasionally, or one reached over a metered or relayed link.
 - **Forget pairing** — deletes the token on this Mac. The machine stays listed as *pairing
   required*.
 - **Remove machine** — removes it, its token and its pinned certificate. A machine that was found

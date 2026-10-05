@@ -1,7 +1,7 @@
 //
 //  File:      SiliconScopeRootView.swift
 //  Created:   2026-07-22
-//  Updated:   2026-09-24
+//  Updated:   2026-10-05
 //  Developer: Kennt Kim / Calida Lab
 //  Overview:  The single-window shell: a NavigationSplitView with a "Devices" sidebar (This Mac +
 //             every discovered fleet agent) and a detail pane that shows the selected device's
@@ -13,6 +13,8 @@
 //             keeps the full-size dashboard exactly as before. Devices are secure (https) agents; the lock reflects
 //             pairing state. "Add machine…" registers an off-LAN endpoint (Tailscale / VPN / cloud)
 //             that mDNS can't auto-discover; manual rows can be removed from their context menu.
+//             A machine can also be paused from that menu: listed, but not polled at all until
+//             resumed (FleetPausedStore) — for a box that is only watched occasionally.
 //
 import SwiftUI
 import SiliconScopeCore
@@ -48,10 +50,19 @@ struct SiliconScopeRootView: View {
                     Label("This Mac", systemImage: "laptopcomputer")
                         .tag(DeviceSelection.thisMac)
                     ForEach(fleet.entries) { entry in
+                        let isPaused = fleet.paused.contains(entry.pairingKey)
                         DeviceSidebarRow(
                             entry: entry,
                             isManual: entry.id.hasPrefix("manual:"),
+                            isPaused: isPaused,
                             onUnpair: { fleet.unpair(name: $0) },
+                            onTogglePause: {
+                                if isPaused {
+                                    fleet.resume(name: entry.pairingKey)
+                                } else {
+                                    fleet.pause(name: entry.pairingKey)
+                                }
+                            },
                             onRemove: {
                                 if entry.id.hasPrefix("manual:") {
                                     fleet.removeManual(id: String(entry.id.dropFirst("manual:".count)),
@@ -149,11 +160,13 @@ struct SiliconScopeRootView: View {
 }
 
 /// One remote machine in the Devices sidebar: status dot, hostname, lock state, and a one-line
-/// metric summary. Right-click to forget the pairing.
+/// metric summary. Right-click to pause, forget the pairing or remove it.
 private struct DeviceSidebarRow: View {
     let entry: FleetMonitor.Entry
     let isManual: Bool
+    let isPaused: Bool
     let onUnpair: (String) -> Void
+    let onTogglePause: () -> Void
     let onRemove: () -> Void
     let onRename: () -> Void
 
@@ -178,6 +191,9 @@ private struct DeviceSidebarRow: View {
             // Naming is a viewer-side label only — it writes a nickname keyed by the pairing key,
             // never the key itself, so the token and the pinned certificate survive it (#55).
             Button("Rename…") { onRename() }
+            // Pausing stops the polling entirely without touching the pairing — the row, address,
+            // token and pinned certificate all stay, so Resume reconnects on the next tick.
+            Button(isPaused ? "Resume monitoring" : "Pause monitoring") { onTogglePause() }
             Divider()
             if !entry.needsPairing {
                 Button("Forget pairing", role: .destructive) { onUnpair(entry.pairingKey) }
@@ -198,6 +214,7 @@ private struct DeviceSidebarRow: View {
     /// both together.
     private var subtitle: String {
         if entry.needsPairing { return "pairing required" }
+        if isPaused { return "paused" }
         guard let m = entry.metrics else { return "connecting…" }
         var parts: [String] = []
         if let r = m.llm?.rate, r.age < 120 {
@@ -213,6 +230,7 @@ private struct DeviceSidebarRow: View {
 
     private var statusColor: Color {
         if entry.needsPairing { return .orange }
+        if isPaused { return .gray }
         if entry.metrics != nil { return .green }
         if entry.error != nil { return .red }
         return .gray
