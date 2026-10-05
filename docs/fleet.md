@@ -7,6 +7,7 @@ anything.
 
 - [What each machine shows](#what-each-machine-shows)
 - [How the connection is protected](#how-the-connection-is-protected)
+- [When it uses the network](#when-it-uses-the-network)
 - [Adding a machine](#adding-a-machine)
   - [A Mac you sit at](#a-mac-you-sit-at)
   - [Any other machine: the installer](#any-other-machine-the-installer)
@@ -42,6 +43,24 @@ page; a fanless Mac says *fanless* instead of 0 rpm.
   link anywhere public.
 - **Nothing is exposed but metrics.** The agent answers `GET /metrics` (token required) and
   `GET /healthz`. It has no endpoint that changes anything.
+
+## When it uses the network
+
+**Only while the SiliconScope window is on screen.** The window is the only place fleet data is
+shown, so that is the only time machines are polled:
+
+- **Window open:** every machine is polled every 3 seconds, over one connection per machine that
+  stays open between polls, with the reply gzipped.
+- **Window closed or minimised:** no machine is polled and every connection is closed. A machine
+  you check once a day costs nothing the rest of the day. Finding machines on your LAN (mDNS)
+  keeps running; it stays on your local network.
+- **Window back:** polling resumes at once. The charts show a break where nothing was measured, so
+  a reading from before and one from now are not drawn as if they were seconds apart.
+
+Measured against a cloud agent, one minute each: 106 KB with the window open in 4.5.0 and earlier,
+29 KB since (with the agent not yet sending gzip), nothing with the window closed. Update the
+agents too: compression needs agent 1.4.0 or later on both platforms, and so does keeping the
+connection open to a Mac agent (the Linux agent always kept it).
 
 ## Adding a machine
 
