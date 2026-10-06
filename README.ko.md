@@ -21,7 +21,7 @@
 클라우드 인스턴스에 작은 에이전트를 하나 띄우면, 암호화된 페어링 연결로 같은 대시보드에 들어옵니다.
 원격 Mac도 **Neural Engine까지** 로컬 Mac과 똑같이 보입니다.
 
-*[OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)(미국), [AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)(일본), [ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)(독일)에 소개됐습니다.*
+*[OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)(미국), [AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)(일본), [ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)(독일), [MacMagazine](https://macmagazine.com.br/post/2026/09/02/monitore-todos-os-aspectos-do-seu-mac-com-o-aplicativo-siliconscope/)(브라질)에 소개됐습니다.*
 
 ![온디바이스 AI 부하 상태의 SiliconScope 대시보드](docs/img/dashboard.png)
 

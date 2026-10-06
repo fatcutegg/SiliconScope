@@ -13,7 +13,7 @@
 
 **从 4.0 开始，它也能监控你的*其他*机器。** 无头运行的 Mac mini、桌子底下的 Linux GPU 主机、租来的云服务器，只要在上面跑一个轻量 agent，就能通过加密配对的连接接入同一个仪表盘。远程 Mac 的指标一项不少，**Neural Engine 也在其中**。
 
-*媒体报道：[OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)（美国）、[AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)（日本）、[ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)（德国）。*
+*媒体报道：[OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)（美国）、[AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)（日本）、[ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)（德国）、[MacMagazine](https://macmagazine.com.br/post/2026/09/02/monitore-todos-os-aspectos-do-seu-mac-com-o-aplicativo-siliconscope/)（巴西）。*
 
 ![端侧 AI 负载下的 SiliconScope 仪表盘](docs/img/dashboard.png)
 

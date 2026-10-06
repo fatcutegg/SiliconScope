@@ -23,7 +23,7 @@ Bildschirm, Linux-Rechner mit GPU unter dem Schreibtisch oder gemietete Cloud-In
 ein kleiner Agent, und die Maschine erscheint über eine verschlüsselte, gekoppelte Verbindung im
 selben Dashboard. Entfernte Macs werden dabei vollständig dargestellt, **Neural Engine inklusive**.
 
-*Darüber berichtet haben [ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/) (DE), [OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/) (US) und [AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html) (JP).*
+*Darüber berichtet haben [ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/) (DE), [OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/) (US), [AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html) (JP) und [MacMagazine](https://macmagazine.com.br/post/2026/09/02/monitore-todos-os-aspectos-do-seu-mac-com-o-aplicativo-siliconscope/) (BR).*
 
 ![SiliconScope-Dashboard unter On-Device-KI-Last](docs/img/dashboard.png)
 

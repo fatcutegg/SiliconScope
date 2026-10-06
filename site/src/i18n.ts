@@ -8,6 +8,7 @@ export const SPECTALO = 'https://spectalo.calidalab.ai';
 /// Press coverage, newest first. Kept here rather than inline so both locales link the same
 /// articles and only the lead-in sentence is translated.
 export const PRESS = [
+  { name: 'MacMagazine', href: 'https://macmagazine.com.br/post/2026/09/02/monitore-todos-os-aspectos-do-seu-mac-com-o-aplicativo-siliconscope/' },
   { name: 'OWC Rocket Yard', href: 'https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/' },
   { name: 'AAPL Ch.', href: 'https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html' },
   { name: 'ifun.de', href: 'https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/' },

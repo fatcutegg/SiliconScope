@@ -16,7 +16,7 @@
 
 **4.0 新功能：連你的*其他*機器也一起看。** 不接螢幕的 Mac mini、桌子底下的 Linux GPU 主機、租來的雲端執行個體，只要在上面執行一個小小的 agent，它就會透過加密、經過配對的連線加入同一個儀表板。遠端的 Mac 一樣能看到完整資訊，**Neural Engine 也不例外**。
 
-*曾獲 [OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)（美國）、[AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)（日本）與 [ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)（德國）報導。*
+*曾獲 [OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)（美國）、[AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)（日本）、[ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)（德國）與 [MacMagazine](https://macmagazine.com.br/post/2026/09/02/monitore-todos-os-aspectos-do-seu-mac-com-o-aplicativo-siliconscope/)（巴西）報導。*
 
 ![SiliconScope 儀表板與底部的 Replay 時間軸](docs/img/dashboard.png)
 

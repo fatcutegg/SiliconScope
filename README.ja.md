@@ -16,7 +16,7 @@
 
 **4.0 からは*ほかの*マシンも監視できます。** ヘッドレスの Mac mini、机の下の Linux GPU マシン、借りているクラウドインスタンスなどで小さなエージェントを動かすと、ペアリング済みの暗号化接続を通じて同じダッシュボードに表示されます。リモートの Mac も **Neural Engine を含めて**、ローカルとまったく同じように表示されます。
 
-*[AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)（日本語）、[OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)（英語）、[ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)（ドイツ語）で紹介されました。*
+*[AAPL Ch.](https://applech2.com/archives/20260620-siliconscope-apple-silicon-mac-system-monitor.html)（日本語）、[OWC Rocket Yard](https://eshop.macsales.com/blog/99094-siliconscope-improves-upon-macos-activity-monitor-with-apple-silicon-insights/)（英語）、[ifun.de](https://www.ifun.de/siliconscope-ueberwacht-apple-ki-neural-engine-und-speicher-in-echtzeit-282222/)（ドイツ語）、[MacMagazine](https://macmagazine.com.br/post/2026/09/02/monitore-todos-os-aspectos-do-seu-mac-com-o-aplicativo-siliconscope/)（ポルトガル語）で紹介されました。*
 
 ![オンデバイス AI の負荷がかかった状態の SiliconScope ダッシュボード](docs/img/dashboard.png)
 
